@@ -4,7 +4,7 @@ on:
     tags:
       - "*"
 jobs:
-  DockerBuildPush:
+  BuildAndPush:
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -23,12 +23,12 @@ jobs:
     - name: Build api image
       run: |
         cd api
-        docker build -t zme-api -f ZME.API/Dockerfile .
+        docker build -t zme-api -f Memphis.API/Dockerfile .
     - name: Tag images
       run: |
-        docker tag zme-api ghcr.io/memphis-artcc/zme-api:latest
-        docker tag zme-api ghcr.io/memphis-artcc/zme-api:${{ env.RELEASE_VERSION }}
+        docker tag zme-api ghcr.io/memphis-artcc/api:latest
+        docker tag zme-api ghcr.io/memphis-artcc/api:${{ env.RELEASE_VERSION }}
     - name: Push images
       run: |
-        docker push ghcr.io/memphis-artcc/zme-api:latest
-        docker push ghcr.io/memphis-artcc/zme-api:${{ env.RELEASE_VERSION }}
+        docker push ghcr.io/memphis-artcc/api:latest
+        docker push ghcr.io/memphis-artcc/api:${{ env.RELEASE_VERSION }}

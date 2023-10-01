@@ -3,7 +3,7 @@ on:
   push:
     branches: [develop, feature/*]
 jobs:
-  DockerBuildPush:
+  Build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -13,4 +13,4 @@ jobs:
     - name: Build api image
       run: |
         cd api
-        docker build -t api -f ZME.API/Dockerfile .
+        docker build -t api -f Memphis.API/Dockerfile .
