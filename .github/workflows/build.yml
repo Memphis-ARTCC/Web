@@ -1,0 +1,15 @@
+name: Build
+on:
+  push:
+    branches: [develop, feature/*]
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - name: Checkout the repo
+      uses: actions/checkout@v2
+    - name: Build api image
+      run: |
+        docker build -t api -f Memphis.API/Dockerfile .

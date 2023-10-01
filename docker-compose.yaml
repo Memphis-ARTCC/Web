@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  database:
+    image: postgres:15
+    container_name: database-memphis
+    environment:
+      - PGPORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=qwerty123
+      - POSTGRES_DB=memphis
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data/
+    networks:
+      - memphis
+  redis:
+    image: redis:7.0.11
+    container_name: redis-memphis
+    ports:
+      - "6379:6379"
+    networks:
+      - memphis
+volumes:
+  postgres-data: null
+networks:
+  memphis: null

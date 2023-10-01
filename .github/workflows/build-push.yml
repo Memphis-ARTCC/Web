@@ -1,0 +1,33 @@
+name: Build & Push Prod
+on:
+  push:
+    tags:
+      - "*"
+jobs:
+  BuildAndPush:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+    - name: Checkout the repo
+      uses: actions/checkout@v2
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Get tag
+      run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+    - name: Build api image
+      run: |
+        docker build -t zme-api -f Memphis.API/Dockerfile .
+    - name: Tag images
+      run: |
+        docker tag zme-api ghcr.io/memphis-artcc/api:latest
+        docker tag zme-api ghcr.io/memphis-artcc/api:${{ env.RELEASE_VERSION }}
+    - name: Push images
+      run: |
+        docker push ghcr.io/memphis-artcc/api:latest
+        docker push ghcr.io/memphis-artcc/api:${{ env.RELEASE_VERSION }}
