@@ -1,0 +1,16 @@
+name: Build
+on:
+  push:
+    branches: [develop, feature/*]
+jobs:
+  DockerBuildPush:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - name: Checkout the repo
+      uses: actions/checkout@v2
+    - name: Build api image
+      run: |
+        cd api
+        docker build -t api -f ZME.API/Dockerfile .
