@@ -3,11 +3,19 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.6.33815.320
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Memphis.API", "Memphis.API\Memphis.API.csproj", "{A5761170-01F1-485C-A75B-5C13DC91EC44}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Memphis.API", "Memphis.API\Memphis.API.csproj", "{A5761170-01F1-485C-A75B-5C13DC91EC44}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Memphis.Shared", "Memphis.Shared\Memphis.Shared.csproj", "{99F14527-6FBB-4C96-95CF-F4BF70BF3701}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Memphis.Shared", "Memphis.Shared\Memphis.Shared.csproj", "{99F14527-6FBB-4C96-95CF-F4BF70BF3701}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Jobs", "Jobs", "{33F21DFD-0598-4CB5-B439-DE7C59E5AA63}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8CF65A81-01A0-4374-A576-E37AD5E740BE}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		docker-compose.yaml = docker-compose.yaml
+		LICENSE.txt = LICENSE.txt
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
