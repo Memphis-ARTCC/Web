@@ -12,5 +12,4 @@ jobs:
       uses: actions/checkout@v2
     - name: Build api image
       run: |
-        cd api
         docker build -t api -f Memphis.API/Dockerfile .
