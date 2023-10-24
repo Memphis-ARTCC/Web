@@ -3,6 +3,7 @@ using FluentValidation.Results;
 using Memphis.API.Data;
 using Memphis.API.Extensions;
 using Memphis.API.Services;
+using Memphis.Shared.Dtos;
 using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
@@ -22,36 +23,34 @@ public class EventPositionsController : ControllerBase
     private readonly DatabaseContext _context;
     private readonly RedisService _redisService;
     private readonly LoggingService _loggingService;
-    private readonly S3Service _s3Service;
-    private readonly IValidator<EventPosition> _validator;
+    private readonly IValidator<EventPositionDto> _validator;
     private readonly IHub _sentryHub;
     private readonly ILogger<EventPositionsController> _logger;
 
     public EventPositionsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        S3Service s3Service, IValidator<EventPosition> validator, IHub sentryHub, ILogger<EventPositionsController> logger)
+        IValidator<EventPositionDto> validator, IHub sentryHub, ILogger<EventPositionsController> logger)
     {
         _context = context;
         _redisService = redisService;
         _loggingService = loggingService;
-        _s3Service = s3Service;
         _validator = validator;
         _sentryHub = sentryHub;
         _logger = logger;
     }
 
     [HttpPost]
-    [Authorize(Roles = Constants.CAN_EVENTS)]
+    [Authorize(Roles = Constants.CanEvents)]
     [ProducesResponseType(typeof(Response<EventPosition>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<EventPosition>>> CreateEventPosition(EventPosition data)
+    public async Task<ActionResult<Response<EventPosition>>> CreateEventPosition(EventPositionDto data)
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CAN_EVENTS_LIST))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
                 return StatusCode(401);
 
             var validation = await _validator.ValidateAsync(data);
@@ -65,7 +64,8 @@ public class EventPositionsController : ControllerBase
                 });
             }
 
-            if (!await _context.Events.AnyAsync(x => x.Id == data.EventId))
+            var @event = await _context.Events.FindAsync(data.EventId);
+            if (@event == null)
             {
                 return NotFound(new Response<string?>
                 {
@@ -74,11 +74,18 @@ public class EventPositionsController : ControllerBase
                 });
             }
 
-            var result = await _context.EventPositions.AddAsync(data);
+            var result = await _context.EventPositions.AddAsync(new EventPosition
+            {
+                Event = @event,
+                Name = data.Name,
+                MinRating = data.MinRating,
+                Available = true
+            });
             await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);
 
-            await _loggingService.AddWebsiteLog(Request, $"Created event position '{result.Entity.Id}'", string.Empty, newData);
+            await _loggingService.AddWebsiteLog(Request, $"Created event position '{result.Entity.Id}'", string.Empty,
+                newData);
 
             return Ok(new Response<EventPosition>
             {
@@ -102,9 +109,19 @@ public class EventPositionsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.ALL_STAFF_LIST))
+            var @event = await _context.Events.FindAsync(eventId);
+            if (@event == null)
             {
-                if (!await _context.Events.AnyAsync(x => x.Id == eventId && x.IsOpen))
+                return NotFound(new Response<string?>
+                {
+                    StatusCode = 404,
+                    Message = $"Event '{eventId}' not found"
+                });
+            }
+
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList))
+            {
+                if (!@event.IsOpen)
                 {
                     return NotFound(new Response<string?>
                     {
@@ -112,7 +129,8 @@ public class EventPositionsController : ControllerBase
                         Message = $"Event '{eventId}' not found"
                     });
                 }
-                var result = await _context.EventPositions.Where(x => x.EventId == eventId).ToListAsync();
+
+                var result = await _context.EventPositions.Where(x => x.Event == @event).ToListAsync();
                 return Ok(new Response<IList<EventPosition>>
                 {
                     StatusCode = 200,
@@ -122,15 +140,7 @@ public class EventPositionsController : ControllerBase
             }
             else
             {
-                if (!await _context.Events.AnyAsync(x => x.Id == eventId))
-                {
-                    return NotFound(new Response<string?>
-                    {
-                        StatusCode = 404,
-                        Message = $"Event '{eventId}' not found"
-                    });
-                }
-                var result = await _context.EventPositions.Where(x => x.EventId == eventId).ToListAsync();
+                var result = await _context.EventPositions.Where(x => x.Event == @event).ToListAsync();
                 return Ok(new Response<IList<EventPosition>>
                 {
                     StatusCode = 200,
@@ -147,7 +157,7 @@ public class EventPositionsController : ControllerBase
     }
 
     [HttpDelete("Positions/{eventPositionId:int}")]
-    [Authorize(Roles = Constants.CAN_EVENTS)]
+    [Authorize(Roles = Constants.CanEvents)]
     [ProducesResponseType(typeof(Response<string?>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -157,7 +167,7 @@ public class EventPositionsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CAN_EVENTS_LIST))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
                 return StatusCode(401);
 
             var eventPosition = await _context.EventPositions.FindAsync(eventPositionId);
@@ -169,7 +179,9 @@ public class EventPositionsController : ControllerBase
                     Message = $"Event position '{eventPositionId}' not found"
                 });
             }
-            var eventRegistrations = await _context.EventRegistrations.Where(x => x.EventPositionId == eventPositionId).ToListAsync();
+
+            var eventRegistrations =
+                await _context.EventRegistrations.Where(x => x.EventPosition == eventPosition).ToListAsync();
 
             // Delete registrations that are for the given position
             foreach (var entry in eventRegistrations)
@@ -179,7 +191,8 @@ public class EventPositionsController : ControllerBase
                 // todo: send email that position was removed
                 _context.EventRegistrations.Remove(entry);
                 await _context.SaveChangesAsync();
-                await _loggingService.AddWebsiteLog(Request, $"Deleted event position '{entry.Id}'", registrationOldData, string.Empty);
+                await _loggingService.AddWebsiteLog(Request, $"Deleted event position '{entry.Id}'",
+                    registrationOldData, string.Empty);
             }
 
             // Now delete the position
@@ -187,7 +200,8 @@ public class EventPositionsController : ControllerBase
             _context.EventPositions.Remove(eventPosition);
             await _context.SaveChangesAsync();
 
-            await _loggingService.AddWebsiteLog(Request, $"Deleted event position '{eventPositionId}'", oldData, string.Empty);
+            await _loggingService.AddWebsiteLog(Request, $"Deleted event position '{eventPositionId}'", oldData,
+                string.Empty);
 
             return Ok(new Response<string?>
             {

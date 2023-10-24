@@ -3,6 +3,7 @@ using FluentValidation.Results;
 using Memphis.API.Data;
 using Memphis.API.Extensions;
 using Memphis.API.Services;
+using Memphis.Shared.Dtos;
 using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
@@ -22,12 +23,12 @@ public class AirportsController : ControllerBase
     private readonly DatabaseContext _context;
     private readonly RedisService _redisService;
     private readonly LoggingService _loggingService;
-    private readonly IValidator<Airport> _validator;
+    private readonly IValidator<AirportDto> _validator;
     private readonly IHub _sentryHub;
     private readonly ILogger<AirportsController> _logger;
 
     public AirportsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<Airport> validator, IHub sentryHub, ILogger<AirportsController> logger)
+        IValidator<AirportDto> validator, IHub sentryHub, ILogger<AirportsController> logger)
     {
         _context = context;
         _redisService = redisService;
@@ -39,17 +40,17 @@ public class AirportsController : ControllerBase
 
 
     [HttpPost]
-    [Authorize(Roles = Constants.CAN_AIRPORTS)]
+    [Authorize(Roles = Constants.CanAirports)]
     [ProducesResponseType(typeof(Response<Airport>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Airport>>> CreateAirport(Airport data)
+    public async Task<ActionResult<Response<Airport>>> CreateAirport(AirportDto data)
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CAN_AIRPORTS_LIST))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
                 return StatusCode(401);
 
             var validation = await _validator.ValidateAsync(data);
@@ -63,13 +64,16 @@ public class AirportsController : ControllerBase
                 });
             }
 
-            var result = await _context.Airports.AddAsync(data);
+            var result = await _context.Airports.AddAsync(new Airport
+            {
+                Name = data.Name,
+                Icao = data.Icao,
+            });
             await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);
             await _loggingService.AddWebsiteLog(Request, $"Created airport {result.Entity.Id}", string.Empty, newData);
 
-            await _redisService.RemoveCached("airports");
-            return CreatedAtAction(nameof(GetAirport), new { airportId = result.Entity.Id }, new Response<Airport>
+            return Ok(new Response<Airport>
             {
                 StatusCode = 200,
                 Message = $"Created airport '{result.Entity.Id}'",
@@ -90,20 +94,7 @@ public class AirportsController : ControllerBase
     {
         try
         {
-            var cached = await _redisService.GetCached("airports");
-            _logger.LogDebug("Cached airports: {Airports}", cached);
-            if (cached != null)
-            {
-                var cachedResult = JsonConvert.DeserializeObject<IList<Airport>>(cached);
-                return Ok(new Response<IList<Airport>>
-                {
-                    StatusCode = 200,
-                    Message = $"Got {cachedResult?.Count} airports",
-                    Data = cachedResult
-                });
-            }
             var result = await _context.Airports.ToListAsync();
-            await _redisService.SetCached("airports", JsonConvert.SerializeObject(result));
             return Ok(new Response<IList<Airport>>
             {
                 StatusCode = 200,
@@ -151,19 +142,19 @@ public class AirportsController : ControllerBase
         }
     }
 
-    [HttpPut]
-    [Authorize(Roles = Constants.CAN_AIRPORTS)]
+    [HttpPut("{airportId:int}")]
+    [Authorize(Roles = Constants.CanAirports)]
     [ProducesResponseType(typeof(Response<Airport>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
-    [ProducesResponseType(typeof(Response<int>), 404)]
+    [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Airport>>> UpdateAirport(Airport data)
+    public async Task<ActionResult<Response<Airport>>> UpdateAirport(int airportId, AirportDto data)
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CAN_AIRPORTS_LIST))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
                 return StatusCode(401);
 
             var validation = await _validator.ValidateAsync(data);
@@ -177,14 +168,13 @@ public class AirportsController : ControllerBase
                 });
             }
 
-            var airport = await _context.Airports.FindAsync(data.Id);
+            var airport = await _context.Airports.FindAsync(airportId);
             if (airport == null)
             {
-                return NotFound(new Response<int>
+                return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"Airport '{data.Id}' not found",
-                    Data = data.Id
+                    Message = $"Airport '{airportId}' not found",
                 });
             }
 
@@ -197,7 +187,6 @@ public class AirportsController : ControllerBase
 
             await _loggingService.AddWebsiteLog(Request, $"Updated airport '{airport.Id}'", oldData, newData);
 
-            await _redisService.RemoveCached("airports");
             return Ok(new Response<Airport>
             {
                 StatusCode = 200,
@@ -213,7 +202,7 @@ public class AirportsController : ControllerBase
     }
 
     [HttpDelete("{airportId:int}")]
-    [Authorize(Roles = Constants.CAN_AIRPORTS)]
+    [Authorize(Roles = Constants.CanAirports)]
     [ProducesResponseType(typeof(Response<string?>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -223,7 +212,7 @@ public class AirportsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CAN_AIRPORTS_LIST))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
                 return StatusCode(401);
 
             var airport = await _context.Airports.FindAsync(airportId);

@@ -3,6 +3,7 @@ using FluentValidation.Results;
 using Memphis.API.Data;
 using Memphis.API.Extensions;
 using Memphis.API.Services;
+using Memphis.Shared.Dtos;
 using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
@@ -22,12 +23,12 @@ public class CommentsController : ControllerBase
     private readonly DatabaseContext _context;
     private readonly RedisService _redisService;
     private readonly LoggingService _loggingService;
-    private readonly IValidator<Comment> _validator;
+    private readonly IValidator<CommentDto> _validator;
     private readonly IHub _sentryHub;
     private readonly ILogger<AirportsController> _logger;
 
     public CommentsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<Comment> validator, IHub sentryHub, ILogger<AirportsController> logger)
+        IValidator<CommentDto> validator, IHub sentryHub, ILogger<AirportsController> logger)
     {
         _context = context;
         _redisService = redisService;
@@ -38,22 +39,23 @@ public class CommentsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = Constants.CAN_COMMENT)]
+    [Authorize(Roles = Constants.CanComment)]
     [ProducesResponseType(typeof(Response<Comment>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<int>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Comment>>> CreateComment(Comment data)
+    public async Task<ActionResult<Response<Comment>>> CreateComment(CommentDto data)
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CAN_COMMENT_LIST))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentList))
                 return StatusCode(401);
 
             // Check if they can add a confidential comment
-            if (data.Confidential && !await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CAN_COMMENT_CONFIDENTIAL_LIST))
+            if (data.Confidential &&
+                !await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentConfidentialList))
                 return StatusCode(401);
 
             var validation = await _validator.ValidateAsync(data);
@@ -67,7 +69,8 @@ public class CommentsController : ControllerBase
                 });
             }
 
-            if (!await _context.Users.AnyAsync(x => x.Id == data.UserId))
+            var user = await _context.Users.FindAsync(data.UserId);
+            if (user == null)
             {
                 return NotFound(new Response<int>
                 {
@@ -77,7 +80,7 @@ public class CommentsController : ControllerBase
                 });
             }
 
-            var submitter = Request.HttpContext.GetCid();
+            var submitter = await Request.HttpContext.GetUser(_context);
             if (submitter == null)
             {
                 return NotFound(new Response<int>
@@ -88,15 +91,21 @@ public class CommentsController : ControllerBase
                 });
             }
 
-            data.SubmitterId = submitter ?? 0;
-
-            var result = await _context.Comments.AddAsync(data);
+            var result = await _context.Comments.AddAsync(new Comment
+            {
+                User = user,
+                Submitter = submitter,
+                Confidential = data.Confidential,
+                Title = data.Title,
+                Description = data.Description,
+            });
             await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);
 
-            await _loggingService.AddWebsiteLog(Request, $"Created comment '{result.Entity.Id}'", string.Empty, newData);
+            await _loggingService.AddWebsiteLog(Request, $"Created comment '{result.Entity.Id}'", string.Empty,
+                newData);
 
-            return StatusCode(201, new Response<Comment>
+            return Ok(new Response<Comment>
             {
                 StatusCode = 200,
                 Message = $"Created comment '{result.Entity.Id}'",
@@ -111,7 +120,7 @@ public class CommentsController : ControllerBase
     }
 
     [HttpGet("{userId:int}")]
-    [Authorize(Roles = $"{Constants.CAN_COMMENT},{Constants.CAN_COMMENT_CONFIDENTIAL}")]
+    [Authorize(Roles = $"{Constants.CanComment},{Constants.CanCommentConfidential}")]
     [ProducesResponseType(typeof(ResponsePaging<IList<Comment>>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -121,7 +130,8 @@ public class CommentsController : ControllerBase
     {
         try
         {
-            if (!await _context.Users.AnyAsync(x => x.Id == userId))
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
             {
                 return NotFound(new Response<int>
                 {
@@ -130,15 +140,16 @@ public class CommentsController : ControllerBase
                     Data = userId
                 });
             }
-            if (await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CAN_COMMENT_CONFIDENTIAL_LIST))
+
+            if (await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentConfidentialList))
             {
                 var confidentialResult = await _context.Comments
-                    .Where(x => x.UserId == userId)
+                    .Where(x => x.User == user)
                     .OrderBy(x => x.Timestamp)
                     .Skip((page - 1) * size).Take(size)
                     .ToListAsync();
                 var confidentialTotalCount = await _context.Comments
-                    .Where(x => x.UserId == userId).CountAsync();
+                    .Where(x => x.User == user).CountAsync();
                 return Ok(new ResponsePaging<IList<Comment>>
                 {
                     StatusCode = 200,
@@ -148,16 +159,16 @@ public class CommentsController : ControllerBase
                     Data = confidentialResult
                 });
             }
-            else if (await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CAN_COMMENT_LIST))
+            else if (await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentList))
             {
                 var result = await _context.Comments
-                    .Where(x => x.UserId == userId)
+                    .Where(x => x.User == user)
                     .Where(x => !x.Confidential)
                     .OrderBy(x => x.Timestamp)
                     .Skip((page - 1) * size).Take(size)
                     .ToListAsync();
                 var totalCount = await _context.Comments
-                    .Where(x => x.UserId == userId)
+                    .Where(x => x.User == user)
                     .Where(x => !x.Confidential)
                     .OrderBy(x => x.Timestamp).CountAsync();
                 return Ok(new ResponsePaging<IList<Comment>>
@@ -169,6 +180,7 @@ public class CommentsController : ControllerBase
                     Data = result
                 });
             }
+
             return StatusCode(401);
         }
         catch (Exception ex)
@@ -179,7 +191,7 @@ public class CommentsController : ControllerBase
     }
 
     [HttpDelete("{commentId:int}")]
-    [Authorize(Roles = Constants.SENIOR_STAFF)]
+    [Authorize(Roles = Constants.SeniorStaff)]
     [ProducesResponseType(typeof(Response<string?>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -189,7 +201,7 @@ public class CommentsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SENIOR_STAFF_LIST))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList))
                 return StatusCode(401);
 
             var comment = await _context.Comments.FindAsync(commentId);
@@ -202,6 +214,7 @@ public class CommentsController : ControllerBase
                     Data = commentId
                 });
             }
+
             var oldData = JsonConvert.SerializeObject(comment);
             _context.Comments.Remove(comment);
             await _context.SaveChangesAsync();

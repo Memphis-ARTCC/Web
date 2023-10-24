@@ -61,12 +61,7 @@ public class RedisService
     public async Task<bool> ValidateRoles(ClaimsPrincipal user, string[] roles)
     {
         var userRoles = await GetRoles(user);
-        if (userRoles == null)
-            return false;
-        foreach (var entry in userRoles)
-            if (roles.Any(x => x == entry))
-                return true;
-        return false;
+        return userRoles != null && userRoles.Any(entry => roles.Any(x => x == entry));
     }
 
     public async Task RefreshRoles(int userId)

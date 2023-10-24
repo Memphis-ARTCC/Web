@@ -18,6 +18,16 @@ public static class HttpContextExtensions
         return goodCid ? cid : null;
     }
 
+    public static string? GetName(this HttpContext httpContext)
+    {
+        return httpContext.User.Claims.FirstOrDefault(x => x.Type == "fullName")?.Value;
+    }
+
+    public static string? GetEmail(this HttpContext httpContext)
+    {
+        return httpContext.User.Claims.FirstOrDefault(x => x.Type == "email")?.Value;
+    }
+
     public static async Task<bool> IsMember(this HttpContext httpContext, DatabaseContext context)
     {
         var cidRaw = httpContext.User.Claims.FirstOrDefault(x => x.Type == "cid")?.Value;
@@ -49,21 +59,21 @@ public static class HttpContextExtensions
 
     public static async Task<bool> IsTrainingStaff(this HttpContext httpContext, RedisService redisService)
     {
-        return await redisService.ValidateRoles(httpContext.User, Constants.TRAINING_STAFF_LIST);
+        return await redisService.ValidateRoles(httpContext.User, Constants.TrainingStaffList);
     }
 
     public static async Task<bool> IsAllStaff(this HttpContext httpContext, RedisService redisService)
     {
-        return await redisService.ValidateRoles(httpContext.User, Constants.ALL_STAFF_LIST);
+        return await redisService.ValidateRoles(httpContext.User, Constants.AllStaffList);
     }
 
     public static async Task<bool> IsFullStaff(this HttpContext httpContext, RedisService redisService)
     {
-        return await redisService.ValidateRoles(httpContext.User, Constants.FULL_STAFF_LIST);
+        return await redisService.ValidateRoles(httpContext.User, Constants.FullStaffList);
     }
 
     public static async Task<bool> IsSeniorStaff(this HttpContext httpContext, RedisService redisService)
     {
-        return await redisService.ValidateRoles(httpContext.User, Constants.SENIOR_STAFF_LIST);
+        return await redisService.ValidateRoles(httpContext.User, Constants.SeniorStaffList);
     }
 }
