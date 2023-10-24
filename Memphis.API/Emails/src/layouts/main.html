@@ -1,0 +1,70 @@
+<!DOCTYPE {{{ page.doctype || 'html' }}}>
+<html lang="{{ page.language || 'en' }}" xmlns:v="urn:schemas-microsoft-com:vml">
+<head>
+  <meta charset="{{ page.charset || 'utf-8' }}">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings xmlns:o="urn:schemas-microsoft-com:office:office">
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <style>
+    td,th,div,p,a,h1,h2,h3,h4,h5,h6 {font-family: "Segoe UI", sans-serif; mso-line-height-rule: exactly;}
+  </style>
+  <![endif]-->
+  <if condition="page.title">
+    <title>{{{ page.title }}}</title>
+  </if>
+  <style>
+    {{{ page.css }}}
+  </style>
+  <stack name="head" />
+</head>
+<body class="m-0 p-0 w-full [word-break:break-word] [-webkit-font-smoothing:antialiased] {{ page.bodyClass || '' }}">
+  <if condition="page.preheader">
+    <div class="hidden">
+      {{{ page.preheader }}}
+      <each loop="item in Array.from(Array(150))">&#8199;&#65279;&#847; </each>
+    </div>
+  </if>
+  <div role="article" aria-roledescription="email" aria-label="{{{ page.title || '' }}}" lang="{{ page.language || 'en' }}">
+      <div class="bg-slate-700 sm:px-4 font-sans">
+        <table align="center">
+          <tr>
+            <td class="w-[552px] max-w-full">
+              <div class="mt-2 text-center">
+                <img src="https://memphis-artcc.nyc3.cdn.digitaloceanspaces.com/images/zme_logo.png" width="100" alt="Memphis ARTCC">
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <h1 class="text-center">{{{ page.title }}}</h1>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <div class="bg-slate-300 font-sans">
+        <content />
+      </div>
+      <div class="bg-slate-700 sm:px-4 font-sans">
+        <table align="center">
+          <tr>
+            <td class="px-48 sm:px-24 bg-cool-gray-300 rounded text-left">
+              <p class="text-md text-cool-gray-500 text-center">
+                If you believe you received this email in error, please contact the Memphis ARTCC Webmaster: <a href="mailto:wm@memphisartcc.com">wm@memphisartcc.com</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </div>
+  </div>
+</body>
+</html>

@@ -31,4 +31,8 @@
 		<ProjectReference Include="..\Memphis.Shared\Memphis.Shared.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="Emails\src\images\" />
+	</ItemGroup>
+
 </Project>

@@ -1,9 +1,9 @@
 ﻿using FluentValidation;
-using Memphis.Shared.Models;
+using Memphis.Shared.Dtos;
 
 namespace Memphis.API.Validators;
 
-public class EventRegistrationValidator : AbstractValidator<EventRegistration>
+public class EventRegistrationValidator : AbstractValidator<EventRegistrationDto>
 {
     public EventRegistrationValidator()
     {

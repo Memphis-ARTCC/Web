@@ -1,9 +1,9 @@
 ﻿using FluentValidation;
-using Memphis.Shared.Models;
+using Memphis.Shared.Dtos;
 
 namespace Memphis.API.Validators;
 
-public class FaqValidator : AbstractValidator<Faq>
+public class FaqValidator : AbstractValidator<FaqDto>
 {
     public FaqValidator()
     {

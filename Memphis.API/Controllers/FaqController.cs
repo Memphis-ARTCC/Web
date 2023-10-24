@@ -3,6 +3,7 @@ using FluentValidation.Results;
 using Memphis.API.Data;
 using Memphis.API.Extensions;
 using Memphis.API.Services;
+using Memphis.Shared.Dtos;
 using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
@@ -22,12 +23,12 @@ public class FaqController : ControllerBase
     private readonly DatabaseContext _context;
     private readonly RedisService _redisService;
     private readonly LoggingService _loggingService;
-    private readonly IValidator<Faq> _validator;
+    private readonly IValidator<FaqDto> _validator;
     private readonly IHub _sentryHub;
     private readonly ILogger<FaqController> _logger;
 
     public FaqController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<Faq> validator, IHub sentryHub, ILogger<FaqController> logger)
+        IValidator<FaqDto> validator, IHub sentryHub, ILogger<FaqController> logger)
     {
         _context = context;
         _redisService = redisService;
@@ -38,17 +39,17 @@ public class FaqController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = Constants.CAN_FAQ)]
+    [Authorize(Roles = Constants.CanFaq)]
     [ProducesResponseType(typeof(Response<Faq>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Faq>>> CreateFaq(Faq data)
+    public async Task<ActionResult<Response<Faq>>> CreateFaq(FaqDto data)
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CAN_FAQ_LIST))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFaqList))
                 return StatusCode(401);
 
             var validation = await _validator.ValidateAsync(data);
@@ -62,7 +63,12 @@ public class FaqController : ControllerBase
                 });
             }
 
-            var result = await _context.Faq.AddAsync(data);
+            var result = await _context.Faq.AddAsync(new Faq
+            {
+                Question = data.Question,
+                Answer = data.Answer,
+                Order = data.Order,
+            });
             await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);
 
@@ -89,7 +95,7 @@ public class FaqController : ControllerBase
     {
         try
         {
-            var result = await _context.Faq.OrderBy(x => x.Order).OrderBy(x => x.Question).ToListAsync();
+            var result = await _context.Faq.OrderBy(x => x.Order).ThenBy(x => x.Question).ToListAsync();
             return Ok(new Response<IList<Faq>>
             {
                 StatusCode = 200,
@@ -104,19 +110,19 @@ public class FaqController : ControllerBase
         }
     }
 
-    [HttpPut]
-    [Authorize(Roles = Constants.CAN_FAQ)]
+    [HttpPut("{faqId:int}")]
+    [Authorize(Roles = Constants.CanFaq)]
     [ProducesResponseType(typeof(Response<Faq>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Faq>>> UpdateFaq(Faq data)
+    public async Task<ActionResult<Response<Faq>>> UpdateFaq(int faqId, FaqDto data)
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CAN_FAQ_LIST))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFaqList))
                 return StatusCode(401);
 
             var validation = await _validator.ValidateAsync(data);
@@ -130,13 +136,13 @@ public class FaqController : ControllerBase
                 });
             }
 
-            var faq = await _context.Faq.FindAsync(data.Id);
+            var faq = await _context.Faq.FindAsync(faqId);
             if (faq == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"FAQ '{data.Id}' not found"
+                    Message = $"FAQ '{faqId}' not found"
                 });
             }
 
@@ -165,7 +171,7 @@ public class FaqController : ControllerBase
     }
 
     [HttpDelete("{faqId:int}")]
-    [Authorize(Roles = Constants.CAN_FAQ)]
+    [Authorize(Roles = Constants.CanFaq)]
     [ProducesResponseType(typeof(Response<string?>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -175,7 +181,7 @@ public class FaqController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CAN_FAQ_LIST))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFaqList))
                 return StatusCode(401);
 
             var faq = await _context.Faq.FindAsync(faqId);

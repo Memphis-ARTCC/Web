@@ -17,16 +17,18 @@ public class DatabaseContext : DbContext
     public required DbSet<EventRegistration> EventRegistrations { get; set; }
     public required DbSet<Faq> Faq { get; set; }
     public required DbSet<Feedback> Feedback { get; set; }
-    public required DbSet<FeedbackCannedResponse> FeedbackCannedResponse { get; set; }
     public required DbSet<Shared.Models.File> Files { get; set; }
     public required DbSet<Hours> Hours { get; set; }
+    public required DbSet<Notification> Notifications { get; set; }
     public required DbSet<OnlineController> OnlineControllers { get; set; }
     public required DbSet<Ots> Ots { get; set; }
     public required DbSet<Role> Roles { get; set; }
     public required DbSet<Session> Sessions { get; set; }
     public required DbSet<Settings> Settings { get; set; }
-    public required DbSet<TrainingRequest> TrainingRequests { get; set; }
+    public required DbSet<TrainingMilestone> TrainingMilestones { get; set; }
+    public required DbSet<TrainingSchedule> TrainingSchedules { get; set; }
     public required DbSet<TrainingTicket> TrainingTickets { get; set; }
+    public required DbSet<TrainingType> TrainingTypes { get; set; }
     public required DbSet<User> Users { get; set; }
     public required DbSet<VisitingApplication> VisitingApplications { get; set; }
     public required DbSet<WebsiteLog> WebsiteLogs { get; set; }

@@ -3,7 +3,7 @@ using FluentValidation;
 using Memphis.API.Data;
 using Memphis.API.Services;
 using Memphis.API.Validators;
-using Memphis.Shared.Models;
+using Memphis.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
@@ -97,11 +97,15 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddScoped<IValidator<Airport>, AirportValidator>();
-builder.Services.AddScoped<IValidator<EventPosition>, EventPositionValidator>();
-builder.Services.AddScoped<IValidator<EventRegistration>, EventRegistrationValidator>();
-builder.Services.AddScoped<IValidator<Event>, EventValidator>();
-builder.Services.AddScoped<IValidator<Faq>, FaqValidator>();
+builder.Services.AddScoped<IValidator<AirportDto>, AirportValidator>();
+builder.Services.AddScoped<IValidator<CommentDto>, CommentValidator>();
+builder.Services.AddScoped<IValidator<EventPositionDto>, EventPositionValidator>();
+builder.Services.AddScoped<IValidator<EventRegistrationDto>, EventRegistrationValidator>();
+builder.Services.AddScoped<IValidator<EventDto>, EventValidator>();
+builder.Services.AddScoped<IValidator<FaqDto>, FaqValidator>();
+builder.Services.AddScoped<IValidator<FeedbackDto>, FeedbackValidator>();
+builder.Services.AddScoped<IValidator<FileDto>, FileValidator>();
+builder.Services.AddScoped<IValidator<OtsDto>, OtsValidator>();
 
 builder.Services.AddScoped<LoggingService>();
 builder.Services.AddScoped<RedisService>();

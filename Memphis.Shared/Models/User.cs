@@ -26,6 +26,7 @@ public class User
     public AirportCert Minor { get; set; } = AirportCert.NONE;
     public AirportCert Major { get; set; } = AirportCert.NONE;
     public CenterCert Center { get; set; } = CenterCert.NONE;
+    public string? DiscordId { get; set; }
     public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset Updated { get; set; } = DateTimeOffset.UtcNow;
 }

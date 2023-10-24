@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System.Text.Json.Serialization;
 
-namespace Memphis.Shared.Dtos;
+namespace Memphis.Shared.Dtos.auth;
 
 public class PersonalDetails
 {
@@ -84,7 +84,6 @@ public class Subdivision
     [JsonProperty("name")]
     public required string Name { get; set; }
 }
-
 
 public class VatsimDetails
 {
