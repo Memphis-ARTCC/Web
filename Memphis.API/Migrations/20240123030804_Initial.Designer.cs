@@ -12,15 +12,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Memphis.API.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    [Migration("20231015030718_Updates")]
-    partial class Updates
+    [Migration("20240123030804_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.11")
+                .HasAnnotation("ProductVersion", "8.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -66,6 +66,10 @@ namespace Memphis.API.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Icao");
+
+                    b.HasIndex("Name");
 
                     b.ToTable("Airports");
                 });
@@ -171,6 +175,8 @@ namespace Memphis.API.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Start");
+
                     b.HasIndex("Title");
 
                     b.ToTable("Events");
@@ -241,6 +247,10 @@ namespace Memphis.API.Migrations
                     b.HasIndex("EventId");
 
                     b.HasIndex("EventPositionId");
+
+                    b.HasIndex("Start");
+
+                    b.HasIndex("Status");
 
                     b.HasIndex("UserId");
 
@@ -374,23 +384,23 @@ namespace Memphis.API.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<float>("ApproachHours")
-                        .HasColumnType("real");
+                    b.Property<double>("ApproachHours")
+                        .HasColumnType("double precision");
 
-                    b.Property<float>("CenterHours")
-                        .HasColumnType("real");
+                    b.Property<double>("CenterHours")
+                        .HasColumnType("double precision");
 
-                    b.Property<float>("DeliveryHours")
-                        .HasColumnType("real");
+                    b.Property<double>("DeliveryHours")
+                        .HasColumnType("double precision");
 
-                    b.Property<float>("GroundHours")
-                        .HasColumnType("real");
+                    b.Property<double>("GroundHours")
+                        .HasColumnType("double precision");
 
                     b.Property<int>("Month")
                         .HasColumnType("integer");
 
-                    b.Property<float>("TowerHours")
-                        .HasColumnType("real");
+                    b.Property<double>("TowerHours")
+                        .HasColumnType("double precision");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
@@ -488,10 +498,13 @@ namespace Memphis.API.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("InstructorId")
+                    b.Property<int?>("InstructorId")
                         .HasColumnType("integer");
 
                     b.Property<int>("MilestoneId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Result")
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset?>("Start")
@@ -503,9 +516,6 @@ namespace Memphis.API.Migrations
                     b.Property<int>("SubmitterId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("TrainingRequestId")
-                        .HasColumnType("integer");
-
                     b.Property<DateTimeOffset>("Updated")
                         .HasColumnType("timestamp with time zone");
 
@@ -514,15 +524,17 @@ namespace Memphis.API.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Facility");
+
                     b.HasIndex("InstructorId");
 
                     b.HasIndex("MilestoneId");
 
+                    b.HasIndex("Result");
+
                     b.HasIndex("Status");
 
                     b.HasIndex("SubmitterId");
-
-                    b.HasIndex("TrainingRequestId");
 
                     b.HasIndex("UserId");
 
@@ -709,6 +721,15 @@ namespace Memphis.API.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Settings");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            LastUpdated = new DateTimeOffset(new DateTime(2024, 1, 23, 3, 8, 4, 225, DateTimeKind.Unspecified).AddTicks(8735), new TimeSpan(0, 0, 0, 0, 0)),
+                            RequiredHours = 3,
+                            VisitingOpen = true
+                        });
                 });
 
             modelBuilder.Entity("Memphis.Shared.Models.TrainingMilestone", b =>
@@ -744,7 +765,7 @@ namespace Memphis.API.Migrations
                     b.ToTable("TrainingMilestones");
                 });
 
-            modelBuilder.Entity("Memphis.Shared.Models.TrainingRequest", b =>
+            modelBuilder.Entity("Memphis.Shared.Models.TrainingSchedule", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -752,41 +773,53 @@ namespace Memphis.API.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTimeOffset>("Created")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("End")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("MilestoneId")
+                    b.Property<int>("InstructorId")
                         .HasColumnType("integer");
-
-                    b.Property<bool>("Ots")
-                        .HasColumnType("boolean");
 
                     b.Property<DateTimeOffset>("Start")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("Status")
+                    b.Property<int?>("StudentId")
                         .HasColumnType("integer");
 
-                    b.Property<DateTimeOffset>("Updated")
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstructorId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("TrainingSchedules");
+                });
+
+            modelBuilder.Entity("Memphis.Shared.Models.TrainingScheduleEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("Timestamp")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TrainingScheduleId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TrainingTypeId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("MilestoneId");
+                    b.HasIndex("TrainingScheduleId");
 
-                    b.HasIndex("Start");
-
-                    b.HasIndex("Status");
+                    b.HasIndex("TrainingTypeId");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("TrainingRequests");
+                    b.ToTable("TrainingScheduleEntries");
                 });
 
             modelBuilder.Entity("Memphis.Shared.Models.TrainingTicket", b =>
@@ -819,9 +852,6 @@ namespace Memphis.API.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("TrainingRequestId")
-                        .HasColumnType("integer");
-
                     b.Property<DateTimeOffset>("Updated")
                         .HasColumnType("timestamp with time zone");
 
@@ -840,11 +870,26 @@ namespace Memphis.API.Migrations
 
                     b.HasIndex("TrainerId");
 
-                    b.HasIndex("TrainingRequestId");
-
                     b.HasIndex("UserId");
 
                     b.ToTable("TrainingTickets");
+                });
+
+            modelBuilder.Entity("Memphis.Shared.Models.TrainingType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TrainingTypes");
                 });
 
             modelBuilder.Entity("Memphis.Shared.Models.User", b =>
@@ -866,6 +911,9 @@ namespace Memphis.API.Migrations
 
                     b.Property<DateTimeOffset>("Created")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DiscordId")
+                        .HasColumnType("text");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -1018,6 +1066,21 @@ namespace Memphis.API.Migrations
                     b.ToTable("RoleUser");
                 });
 
+            modelBuilder.Entity("TrainingScheduleTrainingType", b =>
+                {
+                    b.Property<int>("SchedulesId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TrainingTypesId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("SchedulesId", "TrainingTypesId");
+
+                    b.HasIndex("TrainingTypesId");
+
+                    b.ToTable("TrainingScheduleTrainingType");
+                });
+
             modelBuilder.Entity("Memphis.Shared.Models.Comment", b =>
                 {
                     b.HasOne("Memphis.Shared.Models.User", "Submitter")
@@ -1112,9 +1175,7 @@ namespace Memphis.API.Migrations
                 {
                     b.HasOne("Memphis.Shared.Models.User", "Instructor")
                         .WithMany()
-                        .HasForeignKey("InstructorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("InstructorId");
 
                     b.HasOne("Memphis.Shared.Models.TrainingMilestone", "Milestone")
                         .WithMany()
@@ -1125,12 +1186,6 @@ namespace Memphis.API.Migrations
                     b.HasOne("Memphis.Shared.Models.User", "Submitter")
                         .WithMany()
                         .HasForeignKey("SubmitterId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Memphis.Shared.Models.TrainingRequest", "TrainingRequest")
-                        .WithMany()
-                        .HasForeignKey("TrainingRequestId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1146,8 +1201,6 @@ namespace Memphis.API.Migrations
 
                     b.Navigation("Submitter");
 
-                    b.Navigation("TrainingRequest");
-
                     b.Navigation("User");
                 });
 
@@ -1162,11 +1215,34 @@ namespace Memphis.API.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Memphis.Shared.Models.TrainingRequest", b =>
+            modelBuilder.Entity("Memphis.Shared.Models.TrainingSchedule", b =>
                 {
-                    b.HasOne("Memphis.Shared.Models.TrainingMilestone", "Milestone")
+                    b.HasOne("Memphis.Shared.Models.User", "Instructor")
                         .WithMany()
-                        .HasForeignKey("MilestoneId")
+                        .HasForeignKey("InstructorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Memphis.Shared.Models.User", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId");
+
+                    b.Navigation("Instructor");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("Memphis.Shared.Models.TrainingScheduleEntry", b =>
+                {
+                    b.HasOne("Memphis.Shared.Models.TrainingSchedule", "TrainingSchedule")
+                        .WithMany()
+                        .HasForeignKey("TrainingScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Memphis.Shared.Models.TrainingType", "TrainingType")
+                        .WithMany()
+                        .HasForeignKey("TrainingTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1176,7 +1252,9 @@ namespace Memphis.API.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Milestone");
+                    b.Navigation("TrainingSchedule");
+
+                    b.Navigation("TrainingType");
 
                     b.Navigation("User");
                 });
@@ -1195,12 +1273,6 @@ namespace Memphis.API.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Memphis.Shared.Models.TrainingRequest", "TrainingRequest")
-                        .WithMany()
-                        .HasForeignKey("TrainingRequestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Memphis.Shared.Models.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -1210,8 +1282,6 @@ namespace Memphis.API.Migrations
                     b.Navigation("Milestone");
 
                     b.Navigation("Trainer");
-
-                    b.Navigation("TrainingRequest");
 
                     b.Navigation("User");
                 });
@@ -1227,6 +1297,21 @@ namespace Memphis.API.Migrations
                     b.HasOne("Memphis.Shared.Models.User", null)
                         .WithMany()
                         .HasForeignKey("UsersId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TrainingScheduleTrainingType", b =>
+                {
+                    b.HasOne("Memphis.Shared.Models.TrainingSchedule", null)
+                        .WithMany()
+                        .HasForeignKey("SchedulesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Memphis.Shared.Models.TrainingType", null)
+                        .WithMany()
+                        .HasForeignKey("TrainingTypesId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

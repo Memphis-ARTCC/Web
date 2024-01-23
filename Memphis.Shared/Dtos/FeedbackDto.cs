@@ -4,6 +4,7 @@ namespace Memphis.Shared.Dtos;
 
 public class FeedbackDto
 {
+    public int Id { get; set; }
     public int ControllerId { get; set; }
     public required string ControllerCallsign { get; set; }
     public required string Description { get; set; }

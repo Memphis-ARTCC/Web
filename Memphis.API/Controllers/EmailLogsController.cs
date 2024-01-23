@@ -15,19 +15,10 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class EmailLogsController : ControllerBase
+public class EmailLogsController(DatabaseContext context, RedisService redisService, ISentryClient sentryHub,
+        ILogger<EmailLogsController> logger)
+    : ControllerBase
 {
-    private readonly DatabaseContext _context;
-    private readonly RedisService _redisService;
-    private readonly IHub _sentryHub;
-
-    public EmailLogsController(DatabaseContext context, RedisService redisService, IHub sentryHub)
-    {
-        _context = context;
-        _redisService = redisService;
-        _sentryHub = sentryHub;
-    }
-
     [HttpGet]
     [Authorize(Roles = Constants.CanEmailLogs)]
     [ProducesResponseType(typeof(Response<IList<EmailLog>>), 200)]
@@ -36,10 +27,10 @@ public class EmailLogsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEmailLogsList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEmailLogsList))
                 return StatusCode(401);
 
-            var raw = _context.EmailLogs.OrderBy(x => x.Timestamp);
+            var raw = context.EmailLogs.OrderBy(x => x.Timestamp);
             if (to != null)
                 raw.Where(x => x.To.ToLower() == to.ToLower());
             var result = await raw.Skip((page - 1) * size).Take(size).ToListAsync();
@@ -56,7 +47,8 @@ public class EmailLogsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("GetEmailLogs error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

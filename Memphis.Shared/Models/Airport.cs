@@ -1,5 +1,13 @@
-﻿namespace Memphis.Shared.Models;
+﻿#region
 
+using Microsoft.EntityFrameworkCore;
+
+#endregion
+
+namespace Memphis.Shared.Models;
+
+[Index(nameof(Name))]
+[Index(nameof(Icao))]
 public class Airport
 {
     public int Id { get; set; }

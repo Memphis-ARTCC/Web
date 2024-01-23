@@ -18,42 +18,25 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class AirportsController : ControllerBase
+public class AirportsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
+        IValidator<AirportDto> validator, ISentryClient sentryHub, ILogger<AirportsController> logger)
+    : ControllerBase
 {
-    private readonly DatabaseContext _context;
-    private readonly RedisService _redisService;
-    private readonly LoggingService _loggingService;
-    private readonly IValidator<AirportDto> _validator;
-    private readonly IHub _sentryHub;
-    private readonly ILogger<AirportsController> _logger;
-
-    public AirportsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<AirportDto> validator, IHub sentryHub, ILogger<AirportsController> logger)
-    {
-        _context = context;
-        _redisService = redisService;
-        _loggingService = loggingService;
-        _validator = validator;
-        _sentryHub = sentryHub;
-        _logger = logger;
-    }
-
-
     [HttpPost]
     [Authorize(Roles = Constants.CanAirports)]
-    [ProducesResponseType(typeof(Response<Airport>), 200)]
+    [ProducesResponseType(typeof(Response<Airport>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Airport>>> CreateAirport(AirportDto data)
+    public async Task<ActionResult<Response<Airport>>> CreateAirport(AirportDto payload)
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
                 return StatusCode(401);
 
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -64,26 +47,26 @@ public class AirportsController : ControllerBase
                 });
             }
 
-            var result = await _context.Airports.AddAsync(new Airport
+            var result = await context.Airports.AddAsync(new Airport
             {
-                Name = data.Name,
-                Icao = data.Icao,
+                Name = payload.Name,
+                Icao = payload.Icao,
             });
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);
-            await _loggingService.AddWebsiteLog(Request, $"Created airport {result.Entity.Id}", string.Empty, newData);
+            await loggingService.AddWebsiteLog(Request, $"Created airport {result.Entity.Id}", string.Empty, newData);
 
-            return Ok(new Response<Airport>
+            return StatusCode(201, new Response<Airport>
             {
-                StatusCode = 200,
+                StatusCode = 201,
                 Message = $"Created airport '{result.Entity.Id}'",
                 Data = result.Entity
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError("CreateAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("CreateAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -94,7 +77,7 @@ public class AirportsController : ControllerBase
     {
         try
         {
-            var result = await _context.Airports.ToListAsync();
+            var result = await context.Airports.ToListAsync();
             return Ok(new Response<IList<Airport>>
             {
                 StatusCode = 200,
@@ -104,8 +87,8 @@ public class AirportsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("GetAirports error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("GetAirports error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -117,7 +100,7 @@ public class AirportsController : ControllerBase
     {
         try
         {
-            var result = await _context.Airports.FindAsync(airportId);
+            var result = await context.Airports.FindAsync(airportId);
             if (result == null)
             {
                 return NotFound(new Response<int>
@@ -137,12 +120,12 @@ public class AirportsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("GetAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("GetAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
-    [HttpPut("{airportId:int}")]
+    [HttpPut]
     [Authorize(Roles = Constants.CanAirports)]
     [ProducesResponseType(typeof(Response<Airport>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
@@ -150,14 +133,14 @@ public class AirportsController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Airport>>> UpdateAirport(int airportId, AirportDto data)
+    public async Task<ActionResult<Response<Airport>>> UpdateAirport(AirportDto payload)
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
                 return StatusCode(401);
 
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -168,24 +151,24 @@ public class AirportsController : ControllerBase
                 });
             }
 
-            var airport = await _context.Airports.FindAsync(airportId);
+            var airport = await context.Airports.FindAsync();
             if (airport == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"Airport '{airportId}' not found",
+                    Message = $"Airport '{payload.Id}' not found",
                 });
             }
 
             var oldData = JsonConvert.SerializeObject(airport);
-            airport.Name = data.Name;
-            airport.Icao = data.Icao;
+            airport.Name = payload.Name;
+            airport.Icao = payload.Icao;
             airport.Updated = DateTimeOffset.UtcNow;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(airport);
 
-            await _loggingService.AddWebsiteLog(Request, $"Updated airport '{airport.Id}'", oldData, newData);
+            await loggingService.AddWebsiteLog(Request, $"Updated airport '{airport.Id}'", oldData, newData);
 
             return Ok(new Response<Airport>
             {
@@ -196,8 +179,8 @@ public class AirportsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("UpdateAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("UpdateAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -212,10 +195,10 @@ public class AirportsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
                 return StatusCode(401);
 
-            var airport = await _context.Airports.FindAsync(airportId);
+            var airport = await context.Airports.FindAsync(airportId);
             if (airport == null)
             {
                 return NotFound(new Response<int>
@@ -227,12 +210,12 @@ public class AirportsController : ControllerBase
             }
 
             var oldData = JsonConvert.SerializeObject(airport);
-            _context.Airports.Remove(airport);
-            await _context.SaveChangesAsync();
+            context.Airports.Remove(airport);
+            await context.SaveChangesAsync();
 
-            await _loggingService.AddWebsiteLog(Request, $"Deleted airport '{airportId}'", oldData, string.Empty);
+            await loggingService.AddWebsiteLog(Request, $"Deleted airport '{airportId}'", oldData, string.Empty);
 
-            await _redisService.RemoveCached("airports");
+            await redisService.RemoveCached("airports");
             return Ok(new Response<string?>
             {
                 StatusCode = 200,
@@ -241,8 +224,8 @@ public class AirportsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("DeleteAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("DeleteAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

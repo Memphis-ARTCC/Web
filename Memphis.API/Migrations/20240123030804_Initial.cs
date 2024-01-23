@@ -90,44 +90,6 @@ namespace Memphis.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Feedback",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Cid = table.Column<int>(type: "integer", nullable: false),
-                    Name = table.Column<string>(type: "text", nullable: false),
-                    Email = table.Column<string>(type: "text", nullable: false),
-                    ControllerId = table.Column<int>(type: "integer", nullable: false),
-                    ControllerName = table.Column<string>(type: "text", nullable: false),
-                    ControllerCallsign = table.Column<string>(type: "text", nullable: false),
-                    Description = table.Column<string>(type: "text", nullable: false),
-                    Level = table.Column<int>(type: "integer", nullable: false),
-                    Reply = table.Column<string>(type: "text", nullable: true),
-                    Status = table.Column<int>(type: "integer", nullable: false),
-                    Created = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    Updated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Feedback", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "FeedbackCannedResponse",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Title = table.Column<string>(type: "text", nullable: false),
-                    Response = table.Column<string>(type: "text", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_FeedbackCannedResponse", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Files",
                 columns: table => new
                 {
@@ -144,26 +106,6 @@ namespace Memphis.API.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Files", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Hours",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    UserId = table.Column<int>(type: "integer", nullable: false),
-                    Month = table.Column<int>(type: "integer", nullable: false),
-                    Year = table.Column<int>(type: "integer", nullable: false),
-                    DeliveryHours = table.Column<float>(type: "real", nullable: false),
-                    GroundHours = table.Column<float>(type: "real", nullable: false),
-                    TowerHours = table.Column<float>(type: "real", nullable: false),
-                    ApproachHours = table.Column<float>(type: "real", nullable: false),
-                    CenterHours = table.Column<float>(type: "real", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Hours", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -213,6 +155,36 @@ namespace Memphis.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "TrainingMilestones",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Code = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Facility = table.Column<string>(type: "text", nullable: false),
+                    Created = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    Updated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TrainingMilestones", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TrainingTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TrainingTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
@@ -232,6 +204,7 @@ namespace Memphis.API.Migrations
                     Minor = table.Column<int>(type: "integer", nullable: false),
                     Major = table.Column<int>(type: "integer", nullable: false),
                     Center = table.Column<int>(type: "integer", nullable: false),
+                    DiscordId = table.Column<string>(type: "text", nullable: true),
                     Created = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     Updated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
@@ -333,25 +306,109 @@ namespace Memphis.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Ots",
+                name: "Feedback",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    UserId = table.Column<int>(type: "integer", nullable: false),
-                    SubmitterId = table.Column<int>(type: "integer", nullable: false),
-                    InstructorId = table.Column<int>(type: "integer", nullable: true),
-                    TrainingRequestId = table.Column<int>(type: "integer", nullable: true),
-                    Start = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    Position = table.Column<int>(type: "integer", nullable: false),
-                    Facility = table.Column<string>(type: "text", nullable: false),
+                    Cid = table.Column<int>(type: "integer", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Email = table.Column<string>(type: "text", nullable: false),
+                    ControllerId = table.Column<int>(type: "integer", nullable: false),
+                    ControllerCallsign = table.Column<string>(type: "text", nullable: false),
+                    Description = table.Column<string>(type: "text", nullable: false),
+                    Level = table.Column<int>(type: "integer", nullable: false),
+                    Reply = table.Column<string>(type: "text", nullable: true),
                     Status = table.Column<int>(type: "integer", nullable: false),
                     Created = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     Updated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
+                    table.PrimaryKey("PK_Feedback", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Feedback_Users_ControllerId",
+                        column: x => x.ControllerId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Hours",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<int>(type: "integer", nullable: false),
+                    Month = table.Column<int>(type: "integer", nullable: false),
+                    Year = table.Column<int>(type: "integer", nullable: false),
+                    DeliveryHours = table.Column<double>(type: "double precision", nullable: false),
+                    GroundHours = table.Column<double>(type: "double precision", nullable: false),
+                    TowerHours = table.Column<double>(type: "double precision", nullable: false),
+                    ApproachHours = table.Column<double>(type: "double precision", nullable: false),
+                    CenterHours = table.Column<double>(type: "double precision", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Hours", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Hours_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Notifications",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<int>(type: "integer", nullable: false),
+                    Title = table.Column<string>(type: "text", nullable: false),
+                    Link = table.Column<string>(type: "text", nullable: false),
+                    Read = table.Column<bool>(type: "boolean", nullable: false),
+                    Timestamp = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Notifications", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Notifications_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Ots",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    SubmitterId = table.Column<int>(type: "integer", nullable: false),
+                    UserId = table.Column<int>(type: "integer", nullable: false),
+                    InstructorId = table.Column<int>(type: "integer", nullable: true),
+                    Start = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    MilestoneId = table.Column<int>(type: "integer", nullable: false),
+                    Facility = table.Column<string>(type: "text", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    Result = table.Column<int>(type: "integer", nullable: true),
+                    Created = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    Updated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
                     table.PrimaryKey("PK_Ots", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Ots_TrainingMilestones_MilestoneId",
+                        column: x => x.MilestoneId,
+                        principalTable: "TrainingMilestones",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Ots_Users_InstructorId",
                         column: x => x.InstructorId,
@@ -421,24 +478,65 @@ namespace Memphis.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "TrainingRequests",
+                name: "TrainingSchedules",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    InstructorId = table.Column<int>(type: "integer", nullable: false),
+                    StudentId = table.Column<int>(type: "integer", nullable: true),
+                    Start = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TrainingSchedules", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_TrainingSchedules_Users_InstructorId",
+                        column: x => x.InstructorId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_TrainingSchedules_Users_StudentId",
+                        column: x => x.StudentId,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TrainingTickets",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     UserId = table.Column<int>(type: "integer", nullable: false),
-                    Position = table.Column<int>(type: "integer", nullable: false),
+                    TrainerId = table.Column<int>(type: "integer", nullable: false),
+                    MilestoneId = table.Column<int>(type: "integer", nullable: false),
+                    Performance = table.Column<int>(type: "integer", nullable: false),
+                    UserNotes = table.Column<string>(type: "text", nullable: false),
+                    TrainingNotes = table.Column<string>(type: "text", nullable: false),
                     Start = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     End = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    Status = table.Column<int>(type: "integer", nullable: false),
                     Created = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     Updated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_TrainingRequests", x => x.Id);
+                    table.PrimaryKey("PK_TrainingTickets", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_TrainingRequests_Users_UserId",
+                        name: "FK_TrainingTickets_TrainingMilestones_MilestoneId",
+                        column: x => x.MilestoneId,
+                        principalTable: "TrainingMilestones",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_TrainingTickets_Users_TrainerId",
+                        column: x => x.TrainerId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_TrainingTickets_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -484,43 +582,59 @@ namespace Memphis.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "TrainingTickets",
+                name: "TrainingScheduleEntries",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     UserId = table.Column<int>(type: "integer", nullable: false),
-                    TrainerId = table.Column<int>(type: "integer", nullable: false),
-                    TrainingRequestId = table.Column<int>(type: "integer", nullable: false),
-                    Position = table.Column<int>(type: "integer", nullable: false),
-                    Facility = table.Column<string>(type: "text", nullable: false),
-                    Performance = table.Column<int>(type: "integer", nullable: false),
-                    UserNotes = table.Column<string>(type: "text", nullable: false),
-                    TrainingNotes = table.Column<string>(type: "text", nullable: false),
-                    Start = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    End = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    Created = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    Updated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                    TrainingScheduleId = table.Column<int>(type: "integer", nullable: false),
+                    TrainingTypeId = table.Column<int>(type: "integer", nullable: false),
+                    Timestamp = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_TrainingTickets", x => x.Id);
+                    table.PrimaryKey("PK_TrainingScheduleEntries", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_TrainingTickets_TrainingRequests_TrainingRequestId",
-                        column: x => x.TrainingRequestId,
-                        principalTable: "TrainingRequests",
+                        name: "FK_TrainingScheduleEntries_TrainingSchedules_TrainingScheduleId",
+                        column: x => x.TrainingScheduleId,
+                        principalTable: "TrainingSchedules",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_TrainingTickets_Users_TrainerId",
-                        column: x => x.TrainerId,
-                        principalTable: "Users",
+                        name: "FK_TrainingScheduleEntries_TrainingTypes_TrainingTypeId",
+                        column: x => x.TrainingTypeId,
+                        principalTable: "TrainingTypes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_TrainingTickets_Users_UserId",
+                        name: "FK_TrainingScheduleEntries_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TrainingScheduleTrainingType",
+                columns: table => new
+                {
+                    SchedulesId = table.Column<int>(type: "integer", nullable: false),
+                    TrainingTypesId = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TrainingScheduleTrainingType", x => new { x.SchedulesId, x.TrainingTypesId });
+                    table.ForeignKey(
+                        name: "FK_TrainingScheduleTrainingType_TrainingSchedules_SchedulesId",
+                        column: x => x.SchedulesId,
+                        principalTable: "TrainingSchedules",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_TrainingScheduleTrainingType_TrainingTypes_TrainingTypesId",
+                        column: x => x.TrainingTypesId,
+                        principalTable: "TrainingTypes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -543,6 +657,21 @@ namespace Memphis.API.Migrations
                     { 11, "instructors@memphisartcc.com", "Instructor", "INS" },
                     { 12, "mentors@memphisartcc.com", "Mentor", "MTR" }
                 });
+
+            migrationBuilder.InsertData(
+                table: "Settings",
+                columns: new[] { "Id", "LastUpdated", "RequiredHours", "VisitingOpen" },
+                values: new object[] { 1, new DateTimeOffset(new DateTime(2024, 1, 23, 3, 8, 4, 225, DateTimeKind.Unspecified).AddTicks(8735), new TimeSpan(0, 0, 0, 0, 0)), 3, true });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Airports_Icao",
+                table: "Airports",
+                column: "Icao");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Airports_Name",
+                table: "Airports",
+                column: "Name");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Comments_SubmitterId",
@@ -570,14 +699,34 @@ namespace Memphis.API.Migrations
                 column: "EventPositionId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_EventRegistrations_Start",
+                table: "EventRegistrations",
+                column: "Start");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EventRegistrations_Status",
+                table: "EventRegistrations",
+                column: "Status");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_EventRegistrations_UserId",
                 table: "EventRegistrations",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Events_Start",
+                table: "Events",
+                column: "Start");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Events_Title",
                 table: "Events",
                 column: "Title");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Feedback_ControllerId",
+                table: "Feedback",
+                column: "ControllerId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Hours_Month",
@@ -595,14 +744,39 @@ namespace Memphis.API.Migrations
                 column: "Year");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Notifications_Read",
+                table: "Notifications",
+                column: "Read");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Notifications_Title",
+                table: "Notifications",
+                column: "Title");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Notifications_UserId",
+                table: "Notifications",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Ots_Facility",
+                table: "Ots",
+                column: "Facility");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Ots_InstructorId",
                 table: "Ots",
                 column: "InstructorId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Ots_Position",
+                name: "IX_Ots_MilestoneId",
                 table: "Ots",
-                column: "Position");
+                column: "MilestoneId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Ots_Result",
+                table: "Ots",
+                column: "Result");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Ots_Status",
@@ -655,19 +829,44 @@ namespace Memphis.API.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_TrainingRequests_Start",
-                table: "TrainingRequests",
-                column: "Start");
+                name: "IX_TrainingMilestones_Code",
+                table: "TrainingMilestones",
+                column: "Code");
 
             migrationBuilder.CreateIndex(
-                name: "IX_TrainingRequests_Status",
-                table: "TrainingRequests",
-                column: "Status");
+                name: "IX_TrainingScheduleEntries_TrainingScheduleId",
+                table: "TrainingScheduleEntries",
+                column: "TrainingScheduleId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_TrainingRequests_UserId",
-                table: "TrainingRequests",
+                name: "IX_TrainingScheduleEntries_TrainingTypeId",
+                table: "TrainingScheduleEntries",
+                column: "TrainingTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TrainingScheduleEntries_UserId",
+                table: "TrainingScheduleEntries",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TrainingSchedules_InstructorId",
+                table: "TrainingSchedules",
+                column: "InstructorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TrainingSchedules_StudentId",
+                table: "TrainingSchedules",
+                column: "StudentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TrainingScheduleTrainingType_TrainingTypesId",
+                table: "TrainingScheduleTrainingType",
+                column: "TrainingTypesId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TrainingTickets_MilestoneId",
+                table: "TrainingTickets",
+                column: "MilestoneId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_TrainingTickets_Performance",
@@ -675,19 +874,9 @@ namespace Memphis.API.Migrations
                 column: "Performance");
 
             migrationBuilder.CreateIndex(
-                name: "IX_TrainingTickets_Position",
-                table: "TrainingTickets",
-                column: "Position");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_TrainingTickets_TrainerId",
                 table: "TrainingTickets",
                 column: "TrainerId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_TrainingTickets_TrainingRequestId",
-                table: "TrainingTickets",
-                column: "TrainingRequestId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_TrainingTickets_UserId",
@@ -742,13 +931,13 @@ namespace Memphis.API.Migrations
                 name: "Feedback");
 
             migrationBuilder.DropTable(
-                name: "FeedbackCannedResponse");
-
-            migrationBuilder.DropTable(
                 name: "Files");
 
             migrationBuilder.DropTable(
                 name: "Hours");
+
+            migrationBuilder.DropTable(
+                name: "Notifications");
 
             migrationBuilder.DropTable(
                 name: "OnlineControllers");
@@ -766,6 +955,12 @@ namespace Memphis.API.Migrations
                 name: "Settings");
 
             migrationBuilder.DropTable(
+                name: "TrainingScheduleEntries");
+
+            migrationBuilder.DropTable(
+                name: "TrainingScheduleTrainingType");
+
+            migrationBuilder.DropTable(
                 name: "TrainingTickets");
 
             migrationBuilder.DropTable(
@@ -781,7 +976,13 @@ namespace Memphis.API.Migrations
                 name: "Roles");
 
             migrationBuilder.DropTable(
-                name: "TrainingRequests");
+                name: "TrainingSchedules");
+
+            migrationBuilder.DropTable(
+                name: "TrainingTypes");
+
+            migrationBuilder.DropTable(
+                name: "TrainingMilestones");
 
             migrationBuilder.DropTable(
                 name: "Events");

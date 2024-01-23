@@ -5,12 +5,12 @@ services:
     image: postgres:15
     container_name: database-memphis
     environment:
-      - PGPORT=5432
+      - PGPORT=5400
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=qwerty123
       - POSTGRES_DB=memphis
     ports:
-      - "5432:5432"
+      - "5400:5400"
     volumes:
       - postgres-data:/var/lib/postgresql/data/
     networks:

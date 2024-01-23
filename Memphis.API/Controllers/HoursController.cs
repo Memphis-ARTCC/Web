@@ -1,7 +1,6 @@
 ﻿using Memphis.API.Data;
 using Memphis.API.Extensions;
 using Memphis.Shared.Dtos;
-using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,19 +11,9 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class HoursController : ControllerBase
+public class HoursController(DatabaseContext context, ISentryClient sentryHub, ILogger<HoursController> logger)
+    : ControllerBase
 {
-    private readonly DatabaseContext _context;
-    private readonly IHub _sentryHub;
-    private readonly ILogger<HoursController> _logger;
-
-    public HoursController(DatabaseContext context, IHub sentryHub, ILogger<HoursController> logger)
-    {
-        _context = context;
-        _sentryHub = sentryHub;
-        _logger = logger;
-    }
-
     [HttpGet]
     [ProducesResponseType(typeof(Response<IList<HoursDto>>), 200)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
@@ -35,27 +24,14 @@ public class HoursController : ControllerBase
             month ??= DateTimeOffset.UtcNow.Month;
             year ??= DateTimeOffset.UtcNow.Year;
 
-            var hours = await _context.Hours.Include(x => x.User)
+            var hours = await context.Hours.Include(x => x.User)
                 .Include(x => x.User.Roles).Where(x => x.Month == month && x.Year == year)
                 .OrderBy(x => x.User.LastName).ToListAsync();
 
             var result = new List<HoursDto>();
             foreach (var entry in hours)
             {
-                var userEntry = new RosterUserDto
-                {
-                    Cid = entry.User.Id,
-                    Name = $"{entry.User.FirstName} {entry.User.LastName}",
-                    Initials = entry.User.Initials,
-                    Rating = Helpers.GetRatingName(entry.User.Rating),
-                    Status = entry.User.Status,
-                    Visitor = entry.User.Visitor,
-                    VisitorFrom = entry.User.VisitorFrom,
-                    Minor = entry.User.Minor,
-                    Major = entry.User.Major,
-                    Center = entry.User.Center,
-                    Roles = entry.User.Roles?.ToList() ?? new List<Role>()
-                };
+                var userEntry = RosterUserDto.Parse(entry.User);
                 result.Add(new HoursDto
                 {
                     Month = entry.Month,
@@ -71,25 +47,12 @@ public class HoursController : ControllerBase
 
             // Get all users who didn't get any hours so create a HoursDto wih 0 hours for each
             var userIds = result.Select(x => x.User.Cid).ToList();
-            var usersNoHours = await _context.Users.Include(x => x.Roles)
+            var usersNoHours = await context.Users.Include(x => x.Roles)
                 .Where(x => !userIds.Contains(x.Id)).ToListAsync();
 
             foreach (var entry in usersNoHours)
             {
-                var userEntry = new RosterUserDto
-                {
-                    Cid = entry.Id,
-                    Name = $"{entry.FirstName} {entry.LastName}",
-                    Initials = entry.Initials,
-                    Rating = Helpers.GetRatingName(entry.Rating),
-                    Status = entry.Status,
-                    Visitor = entry.Visitor,
-                    VisitorFrom = entry.VisitorFrom,
-                    Minor = entry.Minor,
-                    Major = entry.Major,
-                    Center = entry.Center,
-                    Roles = entry.Roles?.ToList() ?? new List<Role>()
-                };
+                var userEntry = RosterUserDto.Parse(entry);
                 result.Add(new HoursDto
                 {
                     Month = month ?? 0,
@@ -112,8 +75,8 @@ public class HoursController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("GetHours error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("GetHours error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -125,7 +88,7 @@ public class HoursController : ControllerBase
     {
         try
         {
-            var user = await _context.Users.Include(x => x.Roles).FirstOrDefaultAsync(x => x.Id == cid);
+            var user = await context.Users.Include(x => x.Roles).FirstOrDefaultAsync(x => x.Id == cid);
             if (user == null)
             {
                 return NotFound(new Response<string?>
@@ -137,23 +100,10 @@ public class HoursController : ControllerBase
 
             var result = new List<HoursDto>();
             var now = DateTimeOffset.UtcNow;
-            var userEntry = new RosterUserDto
-            {
-                Cid = user.Id,
-                Name = $"{user.FirstName} {user.LastName}",
-                Initials = user.Initials,
-                Rating = Helpers.GetRatingName(user.Rating),
-                Status = user.Status,
-                Visitor = user.Visitor,
-                VisitorFrom = user.VisitorFrom,
-                Minor = user.Minor,
-                Major = user.Major,
-                Center = user.Center,
-                Roles = user.Roles?.ToList() ?? new List<Role>()
-            };
+            var userEntry = RosterUserDto.Parse(user);
             for (var i = 0; i < 12; i++)
             {
-                var hours = await _context.Hours.Include(x => x.User).Include(x => x.User.Roles)
+                var hours = await context.Hours.Include(x => x.User).Include(x => x.User.Roles)
                     .Where(x => x.User == user && x.Month == now.Month && x.Year == now.Year).FirstOrDefaultAsync();
                 if (hours == null)
                 {
@@ -195,8 +145,8 @@ public class HoursController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("GetUserHours error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("GetUserHours error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

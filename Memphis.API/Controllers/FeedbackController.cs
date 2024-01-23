@@ -19,39 +19,23 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class FeedbackController : ControllerBase
+public class FeedbackController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
+        IValidator<FeedbackDto> validator, ISentryClient sentryHub, ILogger<FeedbackController> logger)
+    : ControllerBase
 {
-    private readonly DatabaseContext _context;
-    private readonly RedisService _redisService;
-    private readonly LoggingService _loggingService;
-    private readonly IValidator<FeedbackDto> _validator;
-    private readonly IHub _sentryHub;
-    private readonly ILogger<FeedbackController> _logger;
-
-    public FeedbackController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<FeedbackDto> validator, IHub sentryHub, ILogger<FeedbackController> logger)
-    {
-        _context = context;
-        _redisService = redisService;
-        _loggingService = loggingService;
-        _validator = validator;
-        _sentryHub = sentryHub;
-        _logger = logger;
-    }
-
     [HttpPost]
     [Authorize]
-    [ProducesResponseType(typeof(Response<Feedback>), 200)]
+    [ProducesResponseType(typeof(Response<Feedback>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Feedback>>> CreateFeedback(FeedbackDto data)
+    public async Task<ActionResult<Response<Feedback>>> CreateFeedback(FeedbackDto payload)
     {
         try
         {
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -62,43 +46,43 @@ public class FeedbackController : ControllerBase
                 });
             }
 
-            var controller = await _context.Users.FindAsync(data.ControllerId);
+            var controller = await context.Users.FindAsync(payload.ControllerId);
             if (controller == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"User '{data.ControllerId}' not found"
+                    Message = $"User '{payload.ControllerId}' not found"
                 });
             }
 
-            var result = await _context.Feedback.AddAsync(new Feedback
+            var result = await context.Feedback.AddAsync(new Feedback
             {
                 Cid = Request.HttpContext.GetCid() ?? 0,
                 Name = Request.HttpContext.GetName() ?? string.Empty,
                 Email = Request.HttpContext.GetEmail() ?? string.Empty,
                 Controller = controller,
-                ControllerCallsign = data.ControllerCallsign,
-                Description = data.Description,
-                Level = data.Level
+                ControllerCallsign = payload.ControllerCallsign,
+                Description = payload.Description,
+                Level = payload.Level
             });
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);
 
-            await _loggingService.AddWebsiteLog(Request, $"Created feedback '{result.Entity.Id}'", string.Empty,
+            await loggingService.AddWebsiteLog(Request, $"Created feedback '{result.Entity.Id}'", string.Empty,
                 newData);
 
-            return Ok(new Response<Feedback>
+            return StatusCode(201, new Response<Feedback>
             {
-                StatusCode = 200,
+                StatusCode = 201,
                 Message = $"Created feedback '{result.Entity.Id}'",
                 Data = result.Entity
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError("CreateFeedback error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("CreateFeedback error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -114,10 +98,10 @@ public class FeedbackController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
                 return StatusCode(401);
 
-            var result = await _context.Feedback.OrderBy(x => x.Created)
+            var result = await context.Feedback.OrderBy(x => x.Created)
                 .Where(x => x.Status == status).Skip((page - 1) * size).Take(size).ToListAsync();
 
             return Ok(new Response<IList<Feedback>>
@@ -129,8 +113,8 @@ public class FeedbackController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("GetAllFeedback error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("GetAllFeedback error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -145,10 +129,10 @@ public class FeedbackController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
                 return StatusCode(401);
 
-            var result = await _context.Feedback.FindAsync(feedbackId);
+            var result = await context.Feedback.FindAsync(feedbackId);
             if (result == null)
             {
                 return NotFound(new Response<string?>
@@ -167,8 +151,8 @@ public class FeedbackController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("GetFeedback error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("GetFeedback error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -183,7 +167,7 @@ public class FeedbackController : ControllerBase
     {
         try
         {
-            var controller = await Request.HttpContext.GetUser(_context);
+            var controller = await Request.HttpContext.GetUser(context);
             if (controller == null)
             {
                 return NotFound(new Response<string?>
@@ -193,10 +177,10 @@ public class FeedbackController : ControllerBase
                 });
             }
 
-            var result = await _context.Feedback
+            var result = await context.Feedback
                 .Where(x => x.Controller == controller && x.Status == FeedbackStatus.APPROVED)
                 .Skip((page - 1) * size).Take(size).ToListAsync();
-            var totalCount = await _context.Feedback
+            var totalCount = await context.Feedback
                 .Where(x => x.Controller == controller && x.Status == FeedbackStatus.APPROVED)
                 .CountAsync();
             return Ok(new ResponsePaging<IList<Feedback>>
@@ -210,12 +194,12 @@ public class FeedbackController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("GetOwnFeedback error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("GetOwnFeedback error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
-    [HttpPut("{feedbackId:int}")]
+    [HttpPut]
     [Authorize(Roles = Constants.CanFeedback)]
     [ProducesResponseType(typeof(Response<Feedback>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
@@ -223,14 +207,14 @@ public class FeedbackController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Feedback>>> UpdateFeedback(int feedbackId, FeedbackDto data)
+    public async Task<ActionResult<Response<Feedback>>> UpdateFeedback(FeedbackDto payload)
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
                 return StatusCode(401);
 
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -241,24 +225,24 @@ public class FeedbackController : ControllerBase
                 });
             }
 
-            var feedback = await _context.Feedback.FindAsync(feedbackId);
+            var feedback = await context.Feedback.FindAsync(payload.Id);
             if (feedback == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"Feedback '{feedbackId}' not found"
+                    Message = $"Feedback '{payload.Id}' not found"
                 });
             }
 
             var oldData = JsonConvert.SerializeObject(feedback);
-            feedback.Reply = data.Reply;
-            feedback.Status = data.Status;
+            feedback.Reply = payload.Reply;
+            feedback.Status = payload.Status;
             feedback.Updated = DateTimeOffset.UtcNow;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(feedback);
 
-            await _loggingService.AddWebsiteLog(Request, $"Updated feedback '{feedback.Id}'", oldData, newData);
+            await loggingService.AddWebsiteLog(Request, $"Updated feedback '{feedback.Id}'", oldData, newData);
 
             // todo: send email to person with reply-to of staff member who processed feedback if reply was not null
             // todo: send email to controller if feedback was approved
@@ -272,8 +256,8 @@ public class FeedbackController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("UpdateFeedback error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("UpdateFeedback error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -288,10 +272,10 @@ public class FeedbackController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
                 return StatusCode(401);
 
-            var result = await _context.Feedback.FindAsync(feedbackId);
+            var result = await context.Feedback.FindAsync(feedbackId);
             if (result == null)
             {
                 return NotFound(new Response<string?>
@@ -302,10 +286,10 @@ public class FeedbackController : ControllerBase
             }
 
             var oldData = JsonConvert.SerializeObject(result);
-            _context.Feedback.Remove(result);
-            await _context.SaveChangesAsync();
+            context.Feedback.Remove(result);
+            await context.SaveChangesAsync();
 
-            await _loggingService.AddWebsiteLog(Request, $"Deleted feedback '{feedbackId}'", oldData, string.Empty);
+            await loggingService.AddWebsiteLog(Request, $"Deleted feedback '{feedbackId}'", oldData, string.Empty);
 
             return Ok(new Response<string?>
             {
@@ -315,8 +299,8 @@ public class FeedbackController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("DeleteFeedback error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("DeleteFeedback error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

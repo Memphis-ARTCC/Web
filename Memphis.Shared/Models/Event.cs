@@ -1,8 +1,13 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿#region
+
+using Microsoft.EntityFrameworkCore;
+
+#endregion
 
 namespace Memphis.Shared.Models;
 
 [Index(nameof(Title))]
+[Index(nameof(Start))]
 public class Event
 {
     public int Id { get; set; }

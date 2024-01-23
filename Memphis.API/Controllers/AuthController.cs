@@ -18,22 +18,10 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class AuthController : ControllerBase
-{
-    private readonly DatabaseContext _context;
-    private readonly RedisService _redisService;
-    private readonly IHub _sentryHub;
-    private readonly ILogger<AuthController> _logger;
-
-    public AuthController(DatabaseContext context, RedisService redisService, IHub sentryHub,
+public class AuthController(DatabaseContext context, RedisService redisService, ISentryClient sentryHub,
         ILogger<AuthController> logger)
-    {
-        _context = context;
-        _redisService = redisService;
-        _sentryHub = sentryHub;
-        _logger = logger;
-    }
-
+    : ControllerBase
+{
     [HttpGet("redirect")]
     [ProducesResponseType(301)]
     [ProducesResponseType(typeof(Response<Guid>), 500)]
@@ -54,7 +42,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -104,7 +92,7 @@ public class AuthController : ControllerBase
             var token = JsonConvert.DeserializeObject<VatsimTokenDto>(content);
             if (token == null)
             {
-                _logger.LogError("Invalid VATSIM token response:\nconnect response code: {Code}\ncontent: {Content}",
+                logger.LogError("Invalid VATSIM token response:\nconnect response code: {Code}\ncontent: {Content}",
                     response.StatusCode, content);
                 throw new InvalidDataException("Invalid VATSIM token response");
             }
@@ -114,7 +102,7 @@ public class AuthController : ControllerBase
 
             if (data == null)
             {
-                _logger.LogError("Invalid VATSIM data response:\nconnect response code: {Code}\ndata: {Data}",
+                logger.LogError("Invalid VATSIM data response:\nconnect response code: {Code}\ndata: {Data}",
                     response.StatusCode, data);
                 throw new InvalidDataException("Invalid VATSIM data response");
             }
@@ -131,7 +119,7 @@ public class AuthController : ControllerBase
                 new("region", data.Data.VatsimDetails.Region.Id),
                 new("division", data.Data.VatsimDetails.Division.Id),
             };
-            var user = await _context.Users.Include(x => x.Roles).FirstOrDefaultAsync(x => x.Id == data.Data.Cid);
+            var user = await context.Users.Include(x => x.Roles).FirstOrDefaultAsync(x => x.Id == data.Data.Cid);
 
             if (user == null || user.Status == UserStatus.REMOVED)
             {
@@ -163,7 +151,7 @@ public class AuthController : ControllerBase
                 roles.AddRange(user.Roles.Select(x => x.NameShort).ToList());
             claims.AddRange(roles.Select(x => new Claim("roles", x)));
 
-            await _redisService.SetRoles(roles, user.Id);
+            await redisService.SetRoles(roles, user.Id);
 
             var jwt = new JwtSecurityToken(
                 issuer,
@@ -179,7 +167,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

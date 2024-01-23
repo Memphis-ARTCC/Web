@@ -7,9 +7,9 @@ public class OtsValidator : AbstractValidator<OtsDto>
 {
     public OtsValidator()
     {
-        RuleFor(x => x.UserId).NotEmpty();
-        RuleFor(x => x.InstructorId).NotEmpty();
-        RuleFor(x => x.TrainingRequestId).NotEmpty();
-        RuleFor(x => x.TrainingRequestId).NotEmpty();
+        RuleFor(x => x.Submitter).NotEmpty();
+        RuleFor(x => x.User).NotEmpty();
+        RuleFor(x => x.Milestone).NotEmpty();
+        RuleFor(x => x.Facility).NotEmpty();
     }
 }

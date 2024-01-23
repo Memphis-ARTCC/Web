@@ -19,47 +19,28 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class EventRegistrationController : ControllerBase
+public class EventRegistrationController(DatabaseContext context, RedisService redisService,
+        LoggingService loggingService, IValidator<EventRegistrationDto> validator,
+        ISentryClient sentryHub, ILogger<EventRegistrationController> logger)
+    : ControllerBase
 {
-    private readonly DatabaseContext _context;
-    private readonly RedisService _redisService;
-    private readonly LoggingService _loggingService;
-    private readonly S3Service _s3Service;
-    private readonly IValidator<EventRegistrationDto> _validator;
-    private readonly IHub _sentryHub;
-    private readonly ILogger<EventRegistrationController> _logger;
-
-    public EventRegistrationController(DatabaseContext context, RedisService redisService,
-        LoggingService loggingService,
-        S3Service s3Service, IValidator<EventRegistrationDto> validator, IHub sentryHub,
-        ILogger<EventRegistrationController> logger)
-    {
-        _context = context;
-        _redisService = redisService;
-        _loggingService = loggingService;
-        _s3Service = s3Service;
-        _validator = validator;
-        _sentryHub = sentryHub;
-        _logger = logger;
-    }
-
     [HttpPost]
     [Authorize(Roles = Constants.CanRegisterForEvents)]
-    [ProducesResponseType(typeof(Response<EventRegistration>), 200)]
+    [ProducesResponseType(typeof(Response<EventRegistration>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<EventRegistration>>> CreateEventRegistration(EventRegistrationDto data)
+    public async Task<ActionResult<Response<EventRegistration>>> CreateEventRegistration(EventRegistrationDto payload)
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User,
+            if (!await redisService.ValidateRoles(Request.HttpContext.User,
                     new[] { Constants.CanRegisterForEvents }))
                 return StatusCode(401);
 
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -70,27 +51,27 @@ public class EventRegistrationController : ControllerBase
                 });
             }
 
-            var @event = await _context.Events.FindAsync(data.EventId);
+            var @event = await context.Events.FindAsync(payload.EventId);
             if (@event == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"Event '{data.EventId}' not found"
+                    Message = $"Event '{payload.EventId}' not found"
                 });
             }
 
-            var position = await _context.EventPositions.FindAsync(data.EventPositionId);
+            var position = await context.EventPositions.FindAsync(payload.EventPositionId);
             if (position == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"Event position '{data.EventPositionId}' not found"
+                    Message = $"Event position '{payload.EventPositionId}' not found"
                 });
             }
 
-            var user = await Request.HttpContext.GetUser(_context);
+            var user = await Request.HttpContext.GetUser(context);
             if (user == null)
             {
                 return NotFound(new Response<string?>
@@ -100,16 +81,16 @@ public class EventRegistrationController : ControllerBase
                 });
             }
 
-            var existingRegistrations = await _context.EventRegistrations
+            var existingRegistrations = await context.EventRegistrations
                 .AnyAsync(x => x.Event == @event && x.User == user);
             var failures = new List<ValidationFailure>();
             if (existingRegistrations)
             {
                 failures.Add(new ValidationFailure
                 {
-                    PropertyName = nameof(data.EventId),
-                    AttemptedValue = data.EventId,
-                    ErrorMessage = $"User already has an event registration for event '{data.EventId}'",
+                    PropertyName = nameof(payload.EventId),
+                    AttemptedValue = payload.EventId,
+                    ErrorMessage = $"User already has an event registration for event '{payload.EventId}'",
                 });
                 return BadRequest(new Response<IList<ValidationFailure>>
                 {
@@ -129,47 +110,47 @@ public class EventRegistrationController : ControllerBase
                 });
             }
 
-            if (data.Start < @event.Start.AddMinutes(-1))
+            if (payload.Start < @event.Start.AddMinutes(-1))
             {
                 failures.Add(new ValidationFailure
                 {
-                    PropertyName = nameof(data.Start),
-                    AttemptedValue = data.Start,
+                    PropertyName = nameof(payload.Start),
+                    AttemptedValue = payload.Start,
                     ErrorMessage =
-                        $"Registration start '{data.Start:u}' is invalid, must be after event start '{@event.Start:u}'",
+                        $"Registration start '{payload.Start:u}' is invalid, must be after event start '{@event.Start:u}'",
                 });
             }
 
-            if (data.Start > @event.End.AddMinutes(1))
+            if (payload.Start > @event.End.AddMinutes(1))
             {
                 failures.Add(new ValidationFailure
                 {
-                    PropertyName = nameof(data.Start),
-                    AttemptedValue = data.Start,
+                    PropertyName = nameof(payload.Start),
+                    AttemptedValue = payload.Start,
                     ErrorMessage =
-                        $"Registration start '{data.Start:u}' is invalid, must be before event end '{@event.End:u}'",
+                        $"Registration start '{payload.Start:u}' is invalid, must be before event end '{@event.End:u}'",
                 });
             }
 
-            if (data.End < @event.Start.AddMinutes(-1))
+            if (payload.End < @event.Start.AddMinutes(-1))
             {
                 failures.Add(new ValidationFailure
                 {
-                    PropertyName = nameof(data.End),
-                    AttemptedValue = data.End,
+                    PropertyName = nameof(payload.End),
+                    AttemptedValue = payload.End,
                     ErrorMessage =
-                        $"Registration end '{data.End:u}' is invalid, must be after event start '{@event.Start:u}'",
+                        $"Registration end '{payload.End:u}' is invalid, must be after event start '{@event.Start:u}'",
                 });
             }
 
-            if (data.End > @event.End.AddMinutes(1))
+            if (payload.End > @event.End.AddMinutes(1))
             {
                 failures.Add(new ValidationFailure
                 {
-                    PropertyName = nameof(data.End),
-                    AttemptedValue = data.End,
+                    PropertyName = nameof(payload.End),
+                    AttemptedValue = payload.End,
                     ErrorMessage =
-                        $"Registration start '{data.End:u}' is invalid, must be before event end '{@event.End:u}'",
+                        $"Registration start '{payload.End:u}' is invalid, must be before event end '{@event.End:u}'",
                 });
             }
 
@@ -177,8 +158,8 @@ public class EventRegistrationController : ControllerBase
             {
                 failures.Add(new ValidationFailure
                 {
-                    PropertyName = nameof(data.EventId),
-                    AttemptedValue = data.EventId,
+                    PropertyName = nameof(payload.EventId),
+                    AttemptedValue = payload.EventId,
                     ErrorMessage = "User may not sign up for events",
                 });
             }
@@ -193,33 +174,33 @@ public class EventRegistrationController : ControllerBase
                 });
             }
 
-            var result = await _context.EventRegistrations.AddAsync(new EventRegistration
+            var result = await context.EventRegistrations.AddAsync(new EventRegistration
             {
                 User = user,
                 Event = @event,
                 EventPosition = position,
-                Start = data.Start,
-                End = data.End
+                Start = payload.Start,
+                End = payload.End
             });
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);
 
             // todo: send confirmation email
 
-            await _loggingService.AddWebsiteLog(Request, $"Created event registration '{result.Entity.Id}'",
+            await loggingService.AddWebsiteLog(Request, $"Created event registration '{result.Entity.Id}'",
                 string.Empty, newData);
 
-            return Ok(new Response<EventRegistration>
+            return StatusCode(201, new Response<EventRegistration>
             {
-                StatusCode = 200,
+                StatusCode = 201,
                 Message = $"Created event position '{result.Entity.Id}'",
                 Data = result.Entity
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError("CreateEventRegistration error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("CreateEventRegistration error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -233,7 +214,7 @@ public class EventRegistrationController : ControllerBase
     {
         try
         {
-            var @event = await _context.Events.FindAsync(eventId);
+            var @event = await context.Events.FindAsync(eventId);
             if (@event == null)
             {
                 return NotFound(new Response<string?>
@@ -243,7 +224,7 @@ public class EventRegistrationController : ControllerBase
                 });
             }
 
-            var user = await Request.HttpContext.GetUser(_context);
+            var user = await Request.HttpContext.GetUser(context);
             if (user == null)
             {
                 return NotFound(new Response<string?>
@@ -254,7 +235,7 @@ public class EventRegistrationController : ControllerBase
             }
 
             var result =
-                await _context.EventRegistrations.FirstOrDefaultAsync(x => x.Event == @event && x.User == user);
+                await context.EventRegistrations.FirstOrDefaultAsync(x => x.Event == @event && x.User == user);
             if (result == null)
             {
                 return NotFound(new Response<string?>
@@ -273,8 +254,8 @@ public class EventRegistrationController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("GetOwnEventRegistration error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("GetOwnEventRegistration error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -289,10 +270,10 @@ public class EventRegistrationController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
                 return StatusCode(401);
 
-            var @event = await _context.Events.FindAsync(eventId);
+            var @event = await context.Events.FindAsync(eventId);
             if (@event == null)
             {
                 return NotFound(new Response<string?>
@@ -302,7 +283,7 @@ public class EventRegistrationController : ControllerBase
                 });
             }
 
-            var result = await _context.EventRegistrations.Where(x => x.Event == @event).ToListAsync();
+            var result = await context.EventRegistrations.Where(x => x.Event == @event).ToListAsync();
             return Ok(new Response<IList<EventRegistration>>
             {
                 StatusCode = 200,
@@ -312,8 +293,8 @@ public class EventRegistrationController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("GetEventRegistrations error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("GetEventRegistrations error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -329,10 +310,10 @@ public class EventRegistrationController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
                 return StatusCode(401);
 
-            var eventRegistration = await _context.EventRegistrations.Include(x => x.EventPosition)
+            var eventRegistration = await context.EventRegistrations.Include(x => x.EventPosition)
                 .FirstOrDefaultAsync(x => x.Id == eventRegistrationId);
             if (eventRegistration == null)
             {
@@ -348,12 +329,12 @@ public class EventRegistrationController : ControllerBase
                 var oldDataRelief = JsonConvert.SerializeObject(eventRegistration);
                 eventRegistration.Status = EventRegistrationStatus.RELIEF;
                 eventRegistration.Updated = DateTimeOffset.UtcNow;
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
                 var newDataRelief = JsonConvert.SerializeObject(eventRegistration);
 
                 // todo: send email
 
-                await _loggingService.AddWebsiteLog(Request,
+                await loggingService.AddWebsiteLog(Request,
                     $"Assigned event registration '{eventRegistrationId}' to relief", oldDataRelief, newDataRelief);
 
                 return Ok(new Response<EventRegistration>
@@ -368,12 +349,12 @@ public class EventRegistrationController : ControllerBase
             eventRegistration.Status = EventRegistrationStatus.ASSIGNED;
             eventRegistration.Updated = DateTimeOffset.UtcNow;
             eventRegistration.EventPosition.Available = false;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(eventRegistration);
 
             // todo: send email
 
-            await _loggingService.AddWebsiteLog(Request,
+            await loggingService.AddWebsiteLog(Request,
                 $"Assigned event registration '{eventRegistrationId}' to event position '{eventRegistration.EventPosition.Id}'",
                 oldData, newData);
 
@@ -386,8 +367,8 @@ public class EventRegistrationController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("AssignEventRegistration error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("AssignEventRegistration error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -401,7 +382,7 @@ public class EventRegistrationController : ControllerBase
     {
         try
         {
-            var @event = await _context.Events.FindAsync(eventId);
+            var @event = await context.Events.FindAsync(eventId);
             if (@event == null)
             {
                 return NotFound(new Response<string?>
@@ -411,7 +392,7 @@ public class EventRegistrationController : ControllerBase
                 });
             }
 
-            var user = await Request.HttpContext.GetUser(_context);
+            var user = await Request.HttpContext.GetUser(context);
             if (user == null)
             {
                 return NotFound(new Response<string?>
@@ -421,7 +402,7 @@ public class EventRegistrationController : ControllerBase
                 });
             }
 
-            var registration = await _context.EventRegistrations.Include(x => x.EventPosition)
+            var registration = await context.EventRegistrations.Include(x => x.EventPosition)
                 .FirstOrDefaultAsync(x => x.Event == @event && x.User == user);
             if (registration == null)
             {
@@ -433,13 +414,13 @@ public class EventRegistrationController : ControllerBase
             }
 
             var oldData = JsonConvert.SerializeObject(registration);
-            _context.EventRegistrations.Remove(registration);
-            await _context.SaveChangesAsync();
+            context.EventRegistrations.Remove(registration);
+            await context.SaveChangesAsync();
 
             registration.EventPosition.Available = true;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
-            await _loggingService.AddWebsiteLog(Request, $"User deleted event registration '{registration.Id}'",
+            await loggingService.AddWebsiteLog(Request, $"User deleted event registration '{registration.Id}'",
                 oldData, string.Empty);
 
             // todo: send confirmation email
@@ -451,8 +432,8 @@ public class EventRegistrationController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("DeleteOwnEventRegistration error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("DeleteOwnEventRegistration error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -466,10 +447,10 @@ public class EventRegistrationController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
                 return StatusCode(401);
 
-            var registration = await _context.EventRegistrations.Include(x => x.EventPosition)
+            var registration = await context.EventRegistrations.Include(x => x.EventPosition)
                 .FirstOrDefaultAsync(x => x.Id == eventRegistrationId);
             if (registration == null)
             {
@@ -481,13 +462,13 @@ public class EventRegistrationController : ControllerBase
             }
 
             var oldData = JsonConvert.SerializeObject(registration);
-            _context.EventRegistrations.Remove(registration);
-            await _context.SaveChangesAsync();
+            context.EventRegistrations.Remove(registration);
+            await context.SaveChangesAsync();
 
             registration.EventPosition.Available = true;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
-            await _loggingService.AddWebsiteLog(Request, $"Deleted event registration '{registration.Id}'", oldData,
+            await loggingService.AddWebsiteLog(Request, $"Deleted event registration '{registration.Id}'", oldData,
                 string.Empty);
 
             return Ok(new Response<string?>
@@ -498,8 +479,8 @@ public class EventRegistrationController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("DeleteEventRegistration error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("DeleteEventRegistration error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

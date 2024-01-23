@@ -214,4 +214,16 @@ public class Constants
     };
 
     public const string CanOts = "ATM,DATM,TA,ATA,WM,AWM,INS";
+
+    public static readonly string[] CanTrainingMilestonesList = new string[]
+    {
+        "ATM",
+        "DATM",
+        "TA",
+        "ATA",
+        "WM",
+        "AWM",
+    };
+
+    public const string CanTrainingMilestones = "ATM,DATM,TA,ATA,WM,AWM";
 }

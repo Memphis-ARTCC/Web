@@ -19,44 +19,27 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class FilesController : ControllerBase
+public class FilesController(DatabaseContext context, RedisService redisService, S3Service s3Service,
+        LoggingService loggingService, IValidator<FileDto> validator, ISentryClient sentryHub,
+        ILogger<FilesController> logger)
+    : ControllerBase
 {
-    private readonly DatabaseContext _context;
-    private readonly RedisService _redisService;
-    private readonly S3Service _s3Service;
-    private readonly LoggingService _loggingService;
-    private readonly IValidator<FileDto> _validator;
-    private readonly IHub _sentryHub;
-    private readonly ILogger<FilesController> _logger;
-
-    public FilesController(DatabaseContext context, RedisService redisService, S3Service s3Service,
-        LoggingService loggingService, IValidator<FileDto> validator, IHub sentryHub, ILogger<FilesController> logger)
-    {
-        _context = context;
-        _redisService = redisService;
-        _loggingService = loggingService;
-        _validator = validator;
-        _sentryHub = sentryHub;
-        _logger = logger;
-        _s3Service = s3Service;
-    }
-
     [HttpPost]
     [Authorize(Roles = Constants.CanFiles)]
-    [ProducesResponseType(typeof(Response<File>), 200)]
+    [ProducesResponseType(typeof(Response<File>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<File>>> CreateFile(FileDto data)
+    public async Task<ActionResult<Response<File>>> CreateFile(FileDto payload)
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFilesList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFilesList))
                 return StatusCode(401);
 
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -86,29 +69,29 @@ public class FilesController : ControllerBase
                 });
             }
 
-            var fileUrl = await _s3Service.UploadFile(Request, "files");
-            var result = await _context.Files.AddAsync(new File
+            var fileUrl = await s3Service.UploadFile(Request, "files");
+            var result = await context.Files.AddAsync(new File
             {
-                Title = data.Title,
-                Description = data.Description,
-                Version = data.Version,
+                Title = payload.Title,
+                Description = payload.Description,
+                Version = payload.Version,
                 FileUrl = fileUrl,
-                Type = data.Type
+                Type = payload.Type
             });
             var newData = JsonConvert.SerializeObject(result.Entity);
-            await _loggingService.AddWebsiteLog(Request, $"Created file '{result.Entity.Id}'", string.Empty, newData);
+            await loggingService.AddWebsiteLog(Request, $"Created file '{result.Entity.Id}'", string.Empty, newData);
 
-            return Ok(new Response<File>
+            return StatusCode(201, new Response<File>
             {
-                StatusCode = 200,
+                StatusCode = 201,
                 Message = $"Created file '{result.Entity.Id}'",
                 Data = result.Entity
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError("CreateFile error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("CreateFile error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -120,12 +103,12 @@ public class FilesController : ControllerBase
     {
         try
         {
-            var isStaff = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList);
+            var isStaff = await redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList);
             var isSeniorStaff =
-                await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList);
+                await redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList);
             var isTrainingStaff =
-                await _redisService.ValidateRoles(Request.HttpContext.User, Constants.TrainingStaffList);
-            var resultQuery = _context.Files.AsQueryable();
+                await redisService.ValidateRoles(Request.HttpContext.User, Constants.TrainingStaffList);
+            var resultQuery = context.Files.AsQueryable();
             if (!isStaff)
             {
                 resultQuery = resultQuery.Where(x => x.Type != FileType.STAFF);
@@ -151,8 +134,8 @@ public class FilesController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("GetFiles error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("GetFiles error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -166,7 +149,7 @@ public class FilesController : ControllerBase
     {
         try
         {
-            var result = await _context.Files.FindAsync(fileId);
+            var result = await context.Files.FindAsync(fileId);
             if (result == null)
             {
                 return NotFound(new Response<string?>
@@ -185,12 +168,12 @@ public class FilesController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("GetFile error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("GetFile error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
-    [HttpPut("{fileId:int}")]
+    [HttpPut]
     [Authorize(Roles = Constants.CanFiles)]
     [ProducesResponseType(typeof(Response<File>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
@@ -198,14 +181,14 @@ public class FilesController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<File>>> UpdateFile(int fileId, FileDto data)
+    public async Task<ActionResult<Response<File>>> UpdateFile(FileDto payload)
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFilesList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFilesList))
                 return StatusCode(401);
 
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -216,13 +199,13 @@ public class FilesController : ControllerBase
                 });
             }
 
-            var file = await _context.Files.FindAsync(fileId);
+            var file = await context.Files.FindAsync(payload.Id);
             if (file == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"File '{fileId}' not found"
+                    Message = $"File '{payload.Id}' not found"
                 });
             }
 
@@ -232,8 +215,8 @@ public class FilesController : ControllerBase
             {
                 if (file.FileUrl != null)
                 {
-                    await _s3Service.DeleteFile(file.FileUrl);
-                    var newUrl = await _s3Service.UploadFile(Request, "files");
+                    await s3Service.DeleteFile(file.FileUrl);
+                    var newUrl = await s3Service.UploadFile(Request, "files");
                     if (newUrl != null)
                     {
                         file.FileUrl = newUrl;
@@ -241,26 +224,26 @@ public class FilesController : ControllerBase
                 }
             }
 
-            file.Title = data.Title;
-            file.Description = data.Description;
-            file.Version = data.Version;
-            file.Type = data.Type;
-            await _context.SaveChangesAsync();
+            file.Title = payload.Title;
+            file.Description = payload.Description;
+            file.Version = payload.Version;
+            file.Type = payload.Type;
+            await context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(file);
 
-            await _loggingService.AddWebsiteLog(Request, $"Updated file '{fileId}'", oldData, newData);
+            await loggingService.AddWebsiteLog(Request, $"Updated file '{file.Id}'", oldData, newData);
 
             return Ok(new Response<File>
             {
                 StatusCode = 200,
-                Message = $"Updated file '{fileId}'",
+                Message = $"Updated file '{file.Id}'",
                 Data = file
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError("UpdateFile error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("UpdateFile error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

@@ -18,41 +18,25 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class FaqController : ControllerBase
+public class FaqController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
+        IValidator<FaqDto> validator, ISentryClient sentryHub, ILogger<FaqController> logger)
+    : ControllerBase
 {
-    private readonly DatabaseContext _context;
-    private readonly RedisService _redisService;
-    private readonly LoggingService _loggingService;
-    private readonly IValidator<FaqDto> _validator;
-    private readonly IHub _sentryHub;
-    private readonly ILogger<FaqController> _logger;
-
-    public FaqController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<FaqDto> validator, IHub sentryHub, ILogger<FaqController> logger)
-    {
-        _context = context;
-        _redisService = redisService;
-        _loggingService = loggingService;
-        _validator = validator;
-        _sentryHub = sentryHub;
-        _logger = logger;
-    }
-
     [HttpPost]
     [Authorize(Roles = Constants.CanFaq)]
-    [ProducesResponseType(typeof(Response<Faq>), 200)]
+    [ProducesResponseType(typeof(Response<Faq>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Faq>>> CreateFaq(FaqDto data)
+    public async Task<ActionResult<Response<Faq>>> CreateFaq(FaqDto payload)
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFaqList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFaqList))
                 return StatusCode(401);
 
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -63,28 +47,28 @@ public class FaqController : ControllerBase
                 });
             }
 
-            var result = await _context.Faq.AddAsync(new Faq
+            var result = await context.Faq.AddAsync(new Faq
             {
-                Question = data.Question,
-                Answer = data.Answer,
-                Order = data.Order,
+                Question = payload.Question,
+                Answer = payload.Answer,
+                Order = payload.Order,
             });
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);
 
-            await _loggingService.AddWebsiteLog(Request, $"Created faq '{result.Entity.Id}'", string.Empty, newData);
+            await loggingService.AddWebsiteLog(Request, $"Created faq '{result.Entity.Id}'", string.Empty, newData);
 
-            return Ok(new Response<Faq>
+            return StatusCode(201, new Response<Faq>
             {
-                StatusCode = 200,
+                StatusCode = 201,
                 Message = $"Created faq '{result.Entity.Id}'",
                 Data = result.Entity
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError("CreateFaq error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("CreateFaq error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -95,7 +79,7 @@ public class FaqController : ControllerBase
     {
         try
         {
-            var result = await _context.Faq.OrderBy(x => x.Order).ThenBy(x => x.Question).ToListAsync();
+            var result = await context.Faq.OrderBy(x => x.Order).ThenBy(x => x.Question).ToListAsync();
             return Ok(new Response<IList<Faq>>
             {
                 StatusCode = 200,
@@ -105,12 +89,12 @@ public class FaqController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("GetFaqs error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("GetFaqs error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
-    [HttpPut("{faqId:int}")]
+    [HttpPut]
     [Authorize(Roles = Constants.CanFaq)]
     [ProducesResponseType(typeof(Response<Faq>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
@@ -118,14 +102,14 @@ public class FaqController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Faq>>> UpdateFaq(int faqId, FaqDto data)
+    public async Task<ActionResult<Response<Faq>>> UpdateFaq(FaqDto payload)
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFaqList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFaqList))
                 return StatusCode(401);
 
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -136,25 +120,25 @@ public class FaqController : ControllerBase
                 });
             }
 
-            var faq = await _context.Faq.FindAsync(faqId);
+            var faq = await context.Faq.FindAsync(payload.Id);
             if (faq == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"FAQ '{faqId}' not found"
+                    Message = $"FAQ '{payload.Id}' not found"
                 });
             }
 
             var oldData = JsonConvert.SerializeObject(faq);
-            faq.Question = data.Question;
-            faq.Answer = data.Answer;
-            faq.Order = data.Order;
+            faq.Question = payload.Question;
+            faq.Answer = payload.Answer;
+            faq.Order = payload.Order;
             faq.Updated = DateTimeOffset.UtcNow;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(faq);
 
-            await _loggingService.AddWebsiteLog(Request, $"Updated faq '{faq.Id}'", oldData, newData);
+            await loggingService.AddWebsiteLog(Request, $"Updated faq '{faq.Id}'", oldData, newData);
 
             return StatusCode(200, new Response<Faq>
             {
@@ -165,8 +149,8 @@ public class FaqController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("UpdateFaq error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            logger.LogError("UpdateFaq error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -181,10 +165,10 @@ public class FaqController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFaqList))
+            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFaqList))
                 return StatusCode(401);
 
-            var faq = await _context.Faq.FindAsync(faqId);
+            var faq = await context.Faq.FindAsync(faqId);
             if (faq == null)
             {
                 return NotFound(new Response<string?>
@@ -195,10 +179,10 @@ public class FaqController : ControllerBase
             }
 
             var oldData = JsonConvert.SerializeObject(faq);
-            _context.Faq.Remove(faq);
-            await _context.SaveChangesAsync();
+            context.Faq.Remove(faq);
+            await context.SaveChangesAsync();
 
-            await _loggingService.AddWebsiteLog(Request, $"Deleted faq '{faqId}'", oldData, string.Empty);
+            await loggingService.AddWebsiteLog(Request, $"Deleted faq '{faqId}'", oldData, string.Empty);
 
             return Ok(new Response<string?>
             {
@@ -208,7 +192,7 @@ public class FaqController : ControllerBase
         }
         catch (Exception ex)
         {
-            return _sentryHub.CaptureException(ex).ReturnActionResult();
+            return sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }
