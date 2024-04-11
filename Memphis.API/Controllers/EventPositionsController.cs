@@ -18,8 +18,13 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class EventPositionsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<EventPositionDto> validator, ISentryClient sentryHub, ILogger<EventPositionsController> logger)
+public class EventPositionsController(
+    DatabaseContext context,
+    RedisService redisService,
+    LoggingService loggingService,
+    IValidator<EventPositionDto> validator,
+    ISentryClient sentryHub,
+    ILogger<EventPositionsController> logger)
     : ControllerBase
 {
     [HttpPost]

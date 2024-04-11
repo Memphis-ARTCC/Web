@@ -36,7 +36,7 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
             if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
                 return StatusCode(401);
 
-            var validation = await validator.ValidateAsync(payload);
+            ValidationResult validation = await validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -47,13 +47,13 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
                 });
             }
 
-            var result = await context.Airports.AddAsync(new Airport
+            Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<Airport> result = await context.Airports.AddAsync(new Airport
             {
                 Name = payload.Name,
                 Icao = payload.Icao,
             });
             await context.SaveChangesAsync();
-            var newData = JsonConvert.SerializeObject(result.Entity);
+            string newData = JsonConvert.SerializeObject(result.Entity);
             await loggingService.AddWebsiteLog(Request, $"Created airport {result.Entity.Id}", string.Empty, newData);
 
             return StatusCode(201, new Response<Airport>
@@ -77,7 +77,7 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
     {
         try
         {
-            var result = await context.Airports.ToListAsync();
+            List<Airport> result = await context.Airports.ToListAsync();
             return Ok(new Response<IList<Airport>>
             {
                 StatusCode = 200,
@@ -100,7 +100,7 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
     {
         try
         {
-            var result = await context.Airports.FindAsync(airportId);
+            Airport? result = await context.Airports.FindAsync(airportId);
             if (result == null)
             {
                 return NotFound(new Response<int>
@@ -140,7 +140,7 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
             if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
                 return StatusCode(401);
 
-            var validation = await validator.ValidateAsync(payload);
+            ValidationResult validation = await validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -151,7 +151,7 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
                 });
             }
 
-            var airport = await context.Airports.FindAsync();
+            Airport? airport = await context.Airports.FindAsync();
             if (airport == null)
             {
                 return NotFound(new Response<string?>
@@ -161,12 +161,12 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
                 });
             }
 
-            var oldData = JsonConvert.SerializeObject(airport);
+            string oldData = JsonConvert.SerializeObject(airport);
             airport.Name = payload.Name;
             airport.Icao = payload.Icao;
             airport.Updated = DateTimeOffset.UtcNow;
             await context.SaveChangesAsync();
-            var newData = JsonConvert.SerializeObject(airport);
+            string newData = JsonConvert.SerializeObject(airport);
 
             await loggingService.AddWebsiteLog(Request, $"Updated airport '{airport.Id}'", oldData, newData);
 
@@ -198,7 +198,7 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
             if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
                 return StatusCode(401);
 
-            var airport = await context.Airports.FindAsync(airportId);
+            Airport? airport = await context.Airports.FindAsync(airportId);
             if (airport == null)
             {
                 return NotFound(new Response<int>
@@ -209,7 +209,7 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
                 });
             }
 
-            var oldData = JsonConvert.SerializeObject(airport);
+            string oldData = JsonConvert.SerializeObject(airport);
             context.Airports.Remove(airport);
             await context.SaveChangesAsync();
 

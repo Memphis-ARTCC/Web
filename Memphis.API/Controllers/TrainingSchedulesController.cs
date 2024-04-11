@@ -1,6 +1,4 @@
-﻿#region
-
-using FluentValidation;
+﻿using FluentValidation;
 using FluentValidation.Results;
 using Memphis.API.Data;
 using Memphis.API.Extensions;
@@ -14,7 +12,6 @@ using Newtonsoft.Json;
 using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 
-#endregion
 
 namespace Memphis.API.Controllers;
 
@@ -44,7 +41,7 @@ public class TrainingSchedulesController(
             if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanTrainingMilestonesList))
                 return StatusCode(401);
 
-            ValidationResult validation = await validator.ValidateAsync(payload);
+            var validation = await validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -65,7 +62,7 @@ public class TrainingSchedulesController(
                 });
             }
 
-            List<TrainingType> trainingTypes = new List<TrainingType>();
+            List<TrainingType> trainingTypes = [];
             foreach (int entry in payload.TrainingTypes)
             {
                 TrainingType? trainingType = await context.TrainingTypes.FindAsync(entry);
