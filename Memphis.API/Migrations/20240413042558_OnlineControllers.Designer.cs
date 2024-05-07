@@ -3,6 +3,7 @@ using System;
 using Memphis.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Memphis.API.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20240413042558_OnlineControllers")]
+    partial class OnlineControllers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -254,6 +257,36 @@ namespace Memphis.API.Migrations
                     b.ToTable("EventRegistrations");
                 });
 
+            modelBuilder.Entity("Memphis.Shared.Models.Faq", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Answer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Faq");
+                });
+
             modelBuilder.Entity("Memphis.Shared.Models.Feedback", b =>
                 {
                     b.Property<int>("Id")
@@ -434,9 +467,6 @@ namespace Memphis.API.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("Cid")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Duration")
                         .IsRequired()
                         .HasColumnType("text");
@@ -448,9 +478,6 @@ namespace Memphis.API.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<int>("Rating")
-                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -700,7 +727,7 @@ namespace Memphis.API.Migrations
                         new
                         {
                             Id = 1,
-                            LastUpdated = new DateTimeOffset(new DateTime(2024, 5, 6, 21, 27, 22, 388, DateTimeKind.Unspecified).AddTicks(591), new TimeSpan(0, 0, 0, 0, 0)),
+                            LastUpdated = new DateTimeOffset(new DateTime(2024, 4, 13, 4, 25, 56, 546, DateTimeKind.Unspecified).AddTicks(2855), new TimeSpan(0, 0, 0, 0, 0)),
                             RequiredHours = 3,
                             VisitingOpen = true
                         });

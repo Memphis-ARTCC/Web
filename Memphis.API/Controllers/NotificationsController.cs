@@ -7,17 +7,28 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Sentry;
 
 namespace Memphis.API.Controllers;
 
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class NotificationsController(DatabaseContext context, LoggingService loggingService, ISentryClient sentryHub,
-        ILogger<NotificationsController> logger)
-    : ControllerBase
+public class NotificationsController : ControllerBase
 {
+    private readonly DatabaseContext _context;
+    private readonly LoggingService _loggingService;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<NotificationsController> _logger;
+
+    public NotificationsController(DatabaseContext context, LoggingService loggingService, ISentryClient sentryHub,
+        ILogger<NotificationsController> logger)
+    {
+        _context = context;
+        _loggingService = loggingService;
+        _sentryHub = sentryHub;
+        _logger = logger;
+    }
+
     [HttpGet]
     [Authorize]
     [ProducesResponseType(typeof(Response<IList<NotificationDto>>), 200)]
@@ -29,7 +40,7 @@ public class NotificationsController(DatabaseContext context, LoggingService log
     {
         try
         {
-            var user = await Request.HttpContext.GetUser(context);
+            var user = await Request.HttpContext.GetUser(_context);
             if (user == null)
             {
                 return NotFound(new Response<string?>
@@ -39,7 +50,7 @@ public class NotificationsController(DatabaseContext context, LoggingService log
                 });
             }
 
-            var notifications = await context.Notifications
+            var notifications = await _context.Notifications
                 .Where(x => x.User == user)
                 .OrderBy(x => x.Timestamp)
                 .Skip((page - 1) * size).Take(size)
@@ -54,8 +65,8 @@ public class NotificationsController(DatabaseContext context, LoggingService log
         }
         catch (Exception ex)
         {
-            logger.LogError("GetNotifications error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetNotifications error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -70,7 +81,7 @@ public class NotificationsController(DatabaseContext context, LoggingService log
     {
         try
         {
-            var user = await Request.HttpContext.GetUser(context);
+            var user = await Request.HttpContext.GetUser(_context);
             if (user == null)
             {
                 return NotFound(new Response<string?>
@@ -80,7 +91,7 @@ public class NotificationsController(DatabaseContext context, LoggingService log
                 });
             }
 
-            var notification = await context.Notifications.FindAsync(notificationId);
+            var notification = await _context.Notifications.FindAsync(notificationId);
             if (notification == null)
             {
                 return NotFound(new Response<string?>
@@ -92,9 +103,9 @@ public class NotificationsController(DatabaseContext context, LoggingService log
 
             var oldData = JsonConvert.SerializeObject(notification);
             notification.Read = true;
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(notification);
-            await loggingService.AddWebsiteLog(Request, "Marked notification as read", oldData, newData);
+            await _loggingService.AddWebsiteLog(Request, "Marked notification as read", oldData, newData);
 
             return Ok(new Response<NotificationDto>
             {
@@ -105,8 +116,8 @@ public class NotificationsController(DatabaseContext context, LoggingService log
         }
         catch (Exception ex)
         {
-            logger.LogError("MarkNotificationAsRead error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("MarkNotificationAsRead error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

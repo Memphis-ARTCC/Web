@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 
 namespace Memphis.API.Controllers;
@@ -18,10 +17,28 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class EventsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        S3Service s3Service, IValidator<EventDto> validator, ISentryClient sentryHub, ILogger<EventsController> logger)
-    : ControllerBase
+public class EventsController : ControllerBase
 {
+    private readonly DatabaseContext _context;
+    private readonly RedisService _redisService;
+    private readonly LoggingService _loggingService;
+    private readonly S3Service _s3Service;
+    private readonly IValidator<EventDto> _validator;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<EventsController> _logger;
+
+    public EventsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
+        S3Service s3Service, IValidator<EventDto> validator, ISentryClient sentryHub, ILogger<EventsController> logger)
+    {
+        _context = context;
+        _redisService = redisService;
+        _loggingService = loggingService;
+        _s3Service = s3Service;
+        _validator = validator;
+        _sentryHub = sentryHub;
+        _logger = logger;
+    }
+
     [HttpPost]
     [Authorize(Roles = Constants.CanEvents)]
     [ProducesResponseType(typeof(Response<Comment>), 201)]
@@ -33,10 +50,12 @@ public class EventsController(DatabaseContext context, RedisService redisService
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            {
                 return StatusCode(401);
+            }
 
-            var validation = await validator.ValidateAsync(payload);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -64,8 +83,8 @@ public class EventsController(DatabaseContext context, RedisService redisService
                 });
             }
 
-            var bannerUrl = await s3Service.UploadFile(Request, "events");
-            var result = await context.Events.AddAsync(new Event
+            var bannerUrl = await _s3Service.UploadFile(Request, "events");
+            var result = await _context.Events.AddAsync(new Event
             {
                 Title = payload.Title,
                 Description = payload.Description,
@@ -75,10 +94,10 @@ public class EventsController(DatabaseContext context, RedisService redisService
                 End = payload.End,
                 IsOpen = payload.IsOpen
             });
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);
 
-            await loggingService.AddWebsiteLog(Request, $"Created event '{result.Entity.Id}'", string.Empty, newData);
+            await _loggingService.AddWebsiteLog(Request, $"Created event '{result.Entity.Id}'", string.Empty, newData);
 
             return StatusCode(201, new Response<Event>
             {
@@ -89,8 +108,8 @@ public class EventsController(DatabaseContext context, RedisService redisService
         }
         catch (Exception ex)
         {
-            logger.LogError("CreateEvent error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("CreateEvent error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -101,12 +120,12 @@ public class EventsController(DatabaseContext context, RedisService redisService
     {
         try
         {
-            var getClosed = await redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList);
+            var getClosed = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList);
             if (getClosed)
             {
-                var result = await context.Events.OrderBy(x => x.Start).Skip((page - 1) * size).Take(size)
+                var result = await _context.Events.OrderBy(x => x.Start).Skip((page - 1) * size).Take(size)
                     .ToListAsync();
-                var totalCount = await context.Events.Where(x => x.IsOpen).OrderBy(x => x.Start).CountAsync();
+                var totalCount = await _context.Events.Where(x => x.IsOpen).OrderBy(x => x.Start).CountAsync();
                 return Ok(new ResponsePaging<IList<Event>>
                 {
                     StatusCode = 200,
@@ -118,9 +137,13 @@ public class EventsController(DatabaseContext context, RedisService redisService
             }
             else
             {
-                var result = await context.Events.OrderBy(x => x.Start).Where(x => x.IsOpen).Skip((page - 1) * size)
-                    .Take(size).ToListAsync();
-                var totalCount = await context.Events.Where(x => x.IsOpen).OrderBy(x => x.Start).CountAsync();
+                var result = await _context.Events
+                    .OrderBy(x => x.Start)
+                    .Where(x => x.IsOpen)
+                    .Skip((page - 1) * size)
+                    .Take(size)
+                    .ToListAsync();
+                var totalCount = await _context.Events.Where(x => x.IsOpen).OrderBy(x => x.Start).CountAsync();
                 return Ok(new ResponsePaging<IList<Event>>
                 {
                     StatusCode = 200,
@@ -133,8 +156,8 @@ public class EventsController(DatabaseContext context, RedisService redisService
         }
         catch (Exception ex)
         {
-            logger.LogError("GetEvents error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetEvents error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -146,8 +169,8 @@ public class EventsController(DatabaseContext context, RedisService redisService
     {
         try
         {
-            var getClosed = await redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList);
-            var result = await context.Events.FindAsync(eventId);
+            var getClosed = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList);
+            var result = await _context.Events.FindAsync(eventId);
             if (result == null)
             {
                 return NotFound(new Response<string?>
@@ -175,8 +198,8 @@ public class EventsController(DatabaseContext context, RedisService redisService
         }
         catch (Exception ex)
         {
-            logger.LogError("GetEvent error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetEvent error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -192,10 +215,12 @@ public class EventsController(DatabaseContext context, RedisService redisService
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            {
                 return StatusCode(401);
+            }
 
-            var validation = await validator.ValidateAsync(payload);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -206,7 +231,7 @@ public class EventsController(DatabaseContext context, RedisService redisService
                 });
             }
 
-            var @event = await context.Events.FindAsync(payload.Id);
+            var @event = await _context.Events.FindAsync(payload.Id);
             if (@event == null)
             {
                 return NotFound(new Response<string?>
@@ -221,7 +246,7 @@ public class EventsController(DatabaseContext context, RedisService redisService
             var newFile = Request.Form.Files.Any();
             if (newFile && @event.BannerUrl != null)
             {
-                await s3Service.DeleteFile(@event.BannerUrl);
+                await _s3Service.DeleteFile(@event.BannerUrl);
             }
 
             @event.Title = payload.Title;
@@ -229,17 +254,17 @@ public class EventsController(DatabaseContext context, RedisService redisService
             @event.Host = payload.Host;
             if (newFile)
             {
-                @event.BannerUrl = await s3Service.UploadFile(Request, "events");
+                @event.BannerUrl = await _s3Service.UploadFile(Request, "events");
             }
 
             @event.Start = payload.Start;
             @event.End = payload.End;
             @event.IsOpen = payload.IsOpen;
             @event.Updated = DateTimeOffset.UtcNow;
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(@event);
 
-            await loggingService.AddWebsiteLog(Request, $"Updated event '{@event.Id}'", oldData, newData);
+            await _loggingService.AddWebsiteLog(Request, $"Updated event '{@event.Id}'", oldData, newData);
 
             return Ok(new Response<Event>
             {
@@ -250,8 +275,8 @@ public class EventsController(DatabaseContext context, RedisService redisService
         }
         catch (Exception ex)
         {
-            logger.LogError("UpdateEvent error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("UpdateEvent error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -267,10 +292,12 @@ public class EventsController(DatabaseContext context, RedisService redisService
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            {
                 return StatusCode(401);
+            }
 
-            var @event = await context.Events.FindAsync(eventId);
+            var @event = await _context.Events.FindAsync(eventId);
             if (@event == null)
             {
                 return NotFound(new Response<string?>
@@ -282,14 +309,14 @@ public class EventsController(DatabaseContext context, RedisService redisService
 
             if (@event.BannerUrl != null)
             {
-                await s3Service.DeleteFile(@event.BannerUrl);
+                await _s3Service.DeleteFile(@event.BannerUrl);
             }
 
             var oldData = JsonConvert.SerializeObject(@event);
-            context.Events.Remove(@event);
-            await context.SaveChangesAsync();
+            _context.Events.Remove(@event);
+            await _context.SaveChangesAsync();
 
-            await loggingService.AddWebsiteLog(Request, $"Deleted event '{eventId}'", oldData, string.Empty);
+            await _loggingService.AddWebsiteLog(Request, $"Deleted event '{eventId}'", oldData, string.Empty);
 
             return Ok(new Response<string?>
             {
@@ -299,8 +326,8 @@ public class EventsController(DatabaseContext context, RedisService redisService
         }
         catch (Exception ex)
         {
-            logger.LogError("DeleteEvent error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("DeleteEvent error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 
 namespace Memphis.API.Controllers;
@@ -18,15 +17,26 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class EventPositionsController(
-    DatabaseContext context,
-    RedisService redisService,
-    LoggingService loggingService,
-    IValidator<EventPositionDto> validator,
-    ISentryClient sentryHub,
-    ILogger<EventPositionsController> logger)
-    : ControllerBase
+public class EventPositionsController : ControllerBase
 {
+    private readonly DatabaseContext _context;
+    private readonly RedisService _redisService;
+    private readonly LoggingService _loggingService;
+    private readonly IValidator<EventPositionDto> _validator;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<EventPositionsController> _logger;
+
+    public EventPositionsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
+        IValidator<EventPositionDto> validator, ISentryClient sentryHub, ILogger<EventPositionsController> logger)
+    {
+        _context = context;
+        _redisService = redisService;
+        _loggingService = loggingService;
+        _validator = validator;
+        _sentryHub = sentryHub;
+        _logger = logger;
+    }
+
     [HttpPost]
     [Authorize(Roles = Constants.CanEvents)]
     [ProducesResponseType(typeof(Response<EventPosition>), 201)]
@@ -39,10 +49,12 @@ public class EventPositionsController(
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            {
                 return StatusCode(401);
+            }
 
-            var validation = await validator.ValidateAsync(payload);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -53,7 +65,7 @@ public class EventPositionsController(
                 });
             }
 
-            var @event = await context.Events.FindAsync(payload.EventId);
+            var @event = await _context.Events.FindAsync(payload.EventId);
             if (@event == null)
             {
                 return NotFound(new Response<string?>
@@ -63,17 +75,17 @@ public class EventPositionsController(
                 });
             }
 
-            var result = await context.EventPositions.AddAsync(new EventPosition
+            var result = await _context.EventPositions.AddAsync(new EventPosition
             {
                 Event = @event,
                 Name = payload.Name,
                 MinRating = payload.MinRating,
                 Available = true
             });
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);
 
-            await loggingService.AddWebsiteLog(Request, $"Created event position '{result.Entity.Id}'", string.Empty,
+            await _loggingService.AddWebsiteLog(Request, $"Created event position '{result.Entity.Id}'", string.Empty,
                 newData);
 
             return StatusCode(201, new Response<EventPosition>
@@ -85,8 +97,8 @@ public class EventPositionsController(
         }
         catch (Exception ex)
         {
-            logger.LogError("CreateEventPosition error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("CreateEventPosition error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -98,7 +110,7 @@ public class EventPositionsController(
     {
         try
         {
-            var @event = await context.Events.FindAsync(eventId);
+            var @event = await _context.Events.FindAsync(eventId);
             if (@event == null)
             {
                 return NotFound(new Response<string?>
@@ -108,7 +120,7 @@ public class EventPositionsController(
                 });
             }
 
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList))
             {
                 if (!@event.IsOpen)
                 {
@@ -119,7 +131,7 @@ public class EventPositionsController(
                     });
                 }
 
-                var result = await context.EventPositions.Where(x => x.Event == @event).ToListAsync();
+                var result = await _context.EventPositions.Where(x => x.Event == @event).ToListAsync();
                 return Ok(new Response<IList<EventPosition>>
                 {
                     StatusCode = 200,
@@ -129,7 +141,7 @@ public class EventPositionsController(
             }
             else
             {
-                var result = await context.EventPositions.Where(x => x.Event == @event).ToListAsync();
+                var result = await _context.EventPositions.Where(x => x.Event == @event).ToListAsync();
                 return Ok(new Response<IList<EventPosition>>
                 {
                     StatusCode = 200,
@@ -140,8 +152,8 @@ public class EventPositionsController(
         }
         catch (Exception ex)
         {
-            logger.LogError("GetEventPositions error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetEventPositions error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -156,10 +168,12 @@ public class EventPositionsController(
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            {
                 return StatusCode(401);
+            }
 
-            var eventPosition = await context.EventPositions.FindAsync(eventPositionId);
+            var eventPosition = await _context.EventPositions.FindAsync(eventPositionId);
             if (eventPosition == null)
             {
                 return NotFound(new Response<string?>
@@ -170,7 +184,7 @@ public class EventPositionsController(
             }
 
             var eventRegistrations =
-                await context.EventRegistrations.Where(x => x.EventPosition == eventPosition).ToListAsync();
+                await _context.EventRegistrations.Where(x => x.EventPosition == eventPosition).ToListAsync();
 
             // Delete registrations that are for the given position
             foreach (var entry in eventRegistrations)
@@ -178,19 +192,17 @@ public class EventPositionsController(
                 var registrationOldData = JsonConvert.SerializeObject(entry);
 
                 // todo: send email that position was removed
-                context.EventRegistrations.Remove(entry);
-                await context.SaveChangesAsync();
-                await loggingService.AddWebsiteLog(Request, $"Deleted event position '{entry.Id}'",
-                    registrationOldData, string.Empty);
+                _context.EventRegistrations.Remove(entry);
+                await _context.SaveChangesAsync();
+                await _loggingService.AddWebsiteLog(Request, $"Deleted event position '{entry.Id}'", registrationOldData, string.Empty);
             }
 
             // Now delete the position
             var oldData = JsonConvert.SerializeObject(eventPosition);
-            context.EventPositions.Remove(eventPosition);
-            await context.SaveChangesAsync();
+            _context.EventPositions.Remove(eventPosition);
+            await _context.SaveChangesAsync();
 
-            await loggingService.AddWebsiteLog(Request, $"Deleted event position '{eventPositionId}'", oldData,
-                string.Empty);
+            await _loggingService.AddWebsiteLog(Request, $"Deleted event position '{eventPositionId}'", oldData, string.Empty);
 
             return Ok(new Response<string?>
             {
@@ -200,8 +212,8 @@ public class EventPositionsController(
         }
         catch (Exception ex)
         {
-            logger.LogError("DeleteEventPosition error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("DeleteEventPosition error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

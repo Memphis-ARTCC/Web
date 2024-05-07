@@ -9,7 +9,6 @@ using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 
 
@@ -18,15 +17,26 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class TrainingSchedulesController(
-    DatabaseContext context,
-    RedisService redisService,
-    LoggingService loggingService,
-    IValidator<TrainingScheduleDto> validator,
-    ISentryClient sentryHub,
-    ILogger<TrainingSchedulesController> logger)
-    : ControllerBase
+public class TrainingSchedulesController : ControllerBase
 {
+    private readonly DatabaseContext _context;
+    private readonly RedisService _redisService;
+    private readonly LoggingService _loggingService;
+    private readonly IValidator<TrainingScheduleDto> _validator;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<TrainingSchedulesController> _logger;
+
+    public TrainingSchedulesController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
+        IValidator<TrainingScheduleDto> validator, ISentryClient sentryHub, ILogger<TrainingSchedulesController> logger)
+    {
+        _context = context;
+        _redisService = redisService;
+        _loggingService = loggingService;
+        _validator = validator;
+        _sentryHub = sentryHub;
+        _logger = logger;
+    }
+
     [HttpPost]
     [Authorize(Roles = Constants.CanTrainingSchedule)]
     [ProducesResponseType(typeof(Response<TrainingSchedule>), 201)]
@@ -38,10 +48,12 @@ public class TrainingSchedulesController(
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanTrainingMilestonesList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanTrainingMilestonesList))
+            {
                 return StatusCode(401);
+            }
 
-            var validation = await validator.ValidateAsync(payload);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -52,7 +64,7 @@ public class TrainingSchedulesController(
                 });
             }
 
-            Shared.Models.User? user = await Request.HttpContext.GetUser(context);
+            var user = await Request.HttpContext.GetUser(_context);
             if (user == null)
             {
                 return NotFound(new Response<string?>
@@ -62,10 +74,10 @@ public class TrainingSchedulesController(
                 });
             }
 
-            List<TrainingType> trainingTypes = [];
+            var trainingTypes = new List<TrainingType>();
             foreach (int entry in payload.TrainingTypes)
             {
-                TrainingType? trainingType = await context.TrainingTypes.FindAsync(entry);
+                var trainingType = await _context.TrainingTypes.FindAsync(entry);
                 if (trainingType == null)
                 {
                     return NotFound(new Response<string?>
@@ -78,17 +90,16 @@ public class TrainingSchedulesController(
                 trainingTypes.Add(trainingType);
             }
 
-            Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<TrainingSchedule> result = await context.TrainingSchedules.AddAsync(new TrainingSchedule
+            var result = await _context.TrainingSchedules.AddAsync(new TrainingSchedule
             {
                 Instructor = user,
                 TrainingTypes = trainingTypes,
                 Start = payload.Start
             });
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
             string newData = JsonConvert.SerializeObject(result.Entity);
 
-            await loggingService.AddWebsiteLog(Request, $"Created training schedule '{result.Entity.Id}'", string.Empty,
-                newData);
+            await _loggingService.AddWebsiteLog(Request, $"Created training schedule '{result.Entity.Id}'", string.Empty, newData);
 
             return StatusCode(201, new Response<TrainingSchedule>
             {
@@ -99,8 +110,8 @@ public class TrainingSchedulesController(
         }
         catch (Exception ex)
         {
-            logger.LogError("CreateTrainingSchedule error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("CreateTrainingSchedule error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

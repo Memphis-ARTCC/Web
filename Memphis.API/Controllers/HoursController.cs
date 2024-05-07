@@ -4,16 +4,25 @@ using Memphis.Shared.Dtos;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Sentry;
 
 namespace Memphis.API.Controllers;
 
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class HoursController(DatabaseContext context, ISentryClient sentryHub, ILogger<HoursController> logger)
-    : ControllerBase
+public class HoursController : ControllerBase
 {
+    private readonly DatabaseContext _context;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<HoursController> _logger;
+
+    public HoursController(DatabaseContext context, ISentryClient sentryHub, ILogger<HoursController> logger)
+    {
+        _context = context;
+        _sentryHub = sentryHub;
+        _logger = logger;
+    }
+
     [HttpGet]
     [ProducesResponseType(typeof(Response<IList<HoursDto>>), 200)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
@@ -24,7 +33,7 @@ public class HoursController(DatabaseContext context, ISentryClient sentryHub, I
             month ??= DateTimeOffset.UtcNow.Month;
             year ??= DateTimeOffset.UtcNow.Year;
 
-            var hours = await context.Hours.Include(x => x.User)
+            var hours = await _context.Hours.Include(x => x.User)
                 .Include(x => x.User.Roles).Where(x => x.Month == month && x.Year == year)
                 .OrderBy(x => x.User.LastName).ToListAsync();
 
@@ -47,7 +56,7 @@ public class HoursController(DatabaseContext context, ISentryClient sentryHub, I
 
             // Get all users who didn't get any hours so create a HoursDto wih 0 hours for each
             var userIds = result.Select(x => x.User.Cid).ToList();
-            var usersNoHours = await context.Users.Include(x => x.Roles)
+            var usersNoHours = await _context.Users.Include(x => x.Roles)
                 .Where(x => !userIds.Contains(x.Id)).ToListAsync();
 
             foreach (var entry in usersNoHours)
@@ -75,8 +84,8 @@ public class HoursController(DatabaseContext context, ISentryClient sentryHub, I
         }
         catch (Exception ex)
         {
-            logger.LogError("GetHours error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetHours error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -88,7 +97,7 @@ public class HoursController(DatabaseContext context, ISentryClient sentryHub, I
     {
         try
         {
-            var user = await context.Users.Include(x => x.Roles).FirstOrDefaultAsync(x => x.Id == cid);
+            var user = await _context.Users.Include(x => x.Roles).FirstOrDefaultAsync(x => x.Id == cid);
             if (user == null)
             {
                 return NotFound(new Response<string?>
@@ -103,7 +112,7 @@ public class HoursController(DatabaseContext context, ISentryClient sentryHub, I
             var userEntry = RosterUserDto.Parse(user);
             for (var i = 0; i < 12; i++)
             {
-                var hours = await context.Hours.Include(x => x.User).Include(x => x.User.Roles)
+                var hours = await _context.Hours.Include(x => x.User).Include(x => x.User.Roles)
                     .Where(x => x.User == user && x.Month == now.Month && x.Year == now.Year).FirstOrDefaultAsync();
                 if (hours == null)
                 {
@@ -145,8 +154,8 @@ public class HoursController(DatabaseContext context, ISentryClient sentryHub, I
         }
         catch (Exception ex)
         {
-            logger.LogError("GetUserHours error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetUserHours error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

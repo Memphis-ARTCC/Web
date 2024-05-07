@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 
 namespace Memphis.API.Controllers;
@@ -18,10 +17,27 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class AirportsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<AirportDto> validator, ISentryClient sentryHub, ILogger<AirportsController> logger)
-    : ControllerBase
+public class AirportsController : ControllerBase
 {
+    private readonly DatabaseContext _context;
+    private readonly RedisService _redisService;
+    private readonly LoggingService _loggingService;
+    private readonly IValidator<AirportDto> _validator;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<AirportsController> _logger;
+
+    public AirportsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
+        IValidator<AirportDto> validator, ISentryClient sentryHub, ILogger<AirportsController> logger)
+    {
+        _context = context;
+        _redisService = redisService;
+        _loggingService = loggingService;
+        _validator = validator;
+        _sentryHub = sentryHub;
+        _logger = logger;
+    }
+
+
     [HttpPost]
     [Authorize(Roles = Constants.CanAirports)]
     [ProducesResponseType(typeof(Response<Airport>), 201)]
@@ -33,10 +49,12 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
+            {
                 return StatusCode(401);
+            }
 
-            ValidationResult validation = await validator.ValidateAsync(payload);
+            ValidationResult validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -47,14 +65,14 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
                 });
             }
 
-            Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<Airport> result = await context.Airports.AddAsync(new Airport
+            Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<Airport> result = await _context.Airports.AddAsync(new Airport
             {
                 Name = payload.Name,
                 Icao = payload.Icao,
             });
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
             string newData = JsonConvert.SerializeObject(result.Entity);
-            await loggingService.AddWebsiteLog(Request, $"Created airport {result.Entity.Id}", string.Empty, newData);
+            await _loggingService.AddWebsiteLog(Request, $"Created airport {result.Entity.Id}", string.Empty, newData);
 
             return StatusCode(201, new Response<Airport>
             {
@@ -65,8 +83,8 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
         }
         catch (Exception ex)
         {
-            logger.LogError("CreateAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("CreateAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -77,7 +95,7 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
     {
         try
         {
-            List<Airport> result = await context.Airports.ToListAsync();
+            List<Airport> result = await _context.Airports.ToListAsync();
             return Ok(new Response<IList<Airport>>
             {
                 StatusCode = 200,
@@ -87,8 +105,8 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
         }
         catch (Exception ex)
         {
-            logger.LogError("GetAirports error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetAirports error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -100,7 +118,7 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
     {
         try
         {
-            Airport? result = await context.Airports.FindAsync(airportId);
+            Airport? result = await _context.Airports.FindAsync(airportId);
             if (result == null)
             {
                 return NotFound(new Response<int>
@@ -120,8 +138,8 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
         }
         catch (Exception ex)
         {
-            logger.LogError("GetAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -137,10 +155,12 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
+            {
                 return StatusCode(401);
+            }
 
-            ValidationResult validation = await validator.ValidateAsync(payload);
+            ValidationResult validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -151,7 +171,7 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
                 });
             }
 
-            Airport? airport = await context.Airports.FindAsync();
+            Airport? airport = await _context.Airports.FindAsync();
             if (airport == null)
             {
                 return NotFound(new Response<string?>
@@ -165,10 +185,10 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
             airport.Name = payload.Name;
             airport.Icao = payload.Icao;
             airport.Updated = DateTimeOffset.UtcNow;
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
             string newData = JsonConvert.SerializeObject(airport);
 
-            await loggingService.AddWebsiteLog(Request, $"Updated airport '{airport.Id}'", oldData, newData);
+            await _loggingService.AddWebsiteLog(Request, $"Updated airport '{airport.Id}'", oldData, newData);
 
             return Ok(new Response<Airport>
             {
@@ -179,8 +199,8 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
         }
         catch (Exception ex)
         {
-            logger.LogError("UpdateAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("UpdateAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -195,10 +215,12 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
+            {
                 return StatusCode(401);
+            }
 
-            Airport? airport = await context.Airports.FindAsync(airportId);
+            Airport? airport = await _context.Airports.FindAsync(airportId);
             if (airport == null)
             {
                 return NotFound(new Response<int>
@@ -210,12 +232,12 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
             }
 
             string oldData = JsonConvert.SerializeObject(airport);
-            context.Airports.Remove(airport);
-            await context.SaveChangesAsync();
+            _context.Airports.Remove(airport);
+            await _context.SaveChangesAsync();
 
-            await loggingService.AddWebsiteLog(Request, $"Deleted airport '{airportId}'", oldData, string.Empty);
+            await _loggingService.AddWebsiteLog(Request, $"Deleted airport '{airportId}'", oldData, string.Empty);
 
-            await redisService.RemoveCached("airports");
+            await _redisService.RemoveCached("airports");
             return Ok(new Response<string?>
             {
                 StatusCode = 200,
@@ -224,8 +246,8 @@ public class AirportsController(DatabaseContext context, RedisService redisServi
         }
         catch (Exception ex)
         {
-            logger.LogError("DeleteAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("DeleteAirport error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

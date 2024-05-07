@@ -114,6 +114,7 @@ builder.Services.AddScoped<IValidator<TrainingScheduleDto>, TrainingScheduleVali
 builder.Services.AddScoped<LoggingService>();
 builder.Services.AddScoped<RedisService>();
 builder.Services.AddScoped<S3Service>();
+builder.Services.AddScoped<VatusaService>();
 
 builder.Services.AddCors(options =>
 {

@@ -5,7 +5,6 @@ using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 using Session = Memphis.Shared.Models.Session;
 
@@ -14,10 +13,22 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class SessionsController(DatabaseContext context, RedisService redisService, ISentryClient sentryHub,
-        ILogger<SessionsController> logger)
-    : ControllerBase
+public class SessionsController : ControllerBase
 {
+    private readonly DatabaseContext _context;
+    private readonly RedisService _redisService;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<SessionsController> _logger;
+
+    public SessionsController(DatabaseContext context, RedisService redisService, ISentryClient sentryHub,
+        ILogger<SessionsController> logger)
+    {
+        _context = context;
+        _redisService = redisService;
+        _sentryHub = sentryHub;
+        _logger = logger;
+    }
+
     [HttpGet]
     [Authorize]
     [ProducesResponseType(401)]
@@ -28,7 +39,7 @@ public class SessionsController(DatabaseContext context, RedisService redisServi
     {
         try
         {
-            var user = await Request.HttpContext.GetUser(context);
+            var user = await Request.HttpContext.GetUser(_context);
             if (user == null)
             {
                 return NotFound(new Response<string?>
@@ -38,13 +49,13 @@ public class SessionsController(DatabaseContext context, RedisService redisServi
                 });
             }
 
-            var sessions = await context.Sessions
+            var sessions = await _context.Sessions
                 .Include(x => x.User)
                 .Where(x => x.User == user)
                 .OrderBy(x => x.Start)
                 .Skip((page - 1) * size).Take(size)
                 .ToListAsync();
-            var totalCount = await context.Sessions
+            var totalCount = await _context.Sessions
                 .Include(x => x.User)
                 .Where(x => x.User == user)
                 .CountAsync();
@@ -60,8 +71,8 @@ public class SessionsController(DatabaseContext context, RedisService redisServi
         }
         catch (Exception ex)
         {
-            logger.LogError("GetSessions error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetSessions error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -75,7 +86,7 @@ public class SessionsController(DatabaseContext context, RedisService redisServi
     {
         try
         {
-            var user = await context.Users.FindAsync(userId);
+            var user = await _context.Users.FindAsync(userId);
             if (user == null)
             {
                 return NotFound(new Response<string?>
@@ -85,13 +96,13 @@ public class SessionsController(DatabaseContext context, RedisService redisServi
                 });
             }
 
-            var sessions = await context.Sessions
+            var sessions = await _context.Sessions
                 .Include(x => x.User)
                 .Where(x => x.User == user)
                 .OrderBy(x => x.Start)
                 .Skip((page - 1) * size).Take(size)
                 .ToListAsync();
-            var totalCount = await context.Sessions
+            var totalCount = await _context.Sessions
                 .Include(x => x.User)
                 .Where(x => x.User == user)
                 .CountAsync();
@@ -107,8 +118,8 @@ public class SessionsController(DatabaseContext context, RedisService redisServi
         }
         catch (Exception ex)
         {
-            logger.LogError("GetSessions error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetSessions error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

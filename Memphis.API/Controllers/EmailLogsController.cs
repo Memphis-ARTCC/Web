@@ -7,7 +7,6 @@ using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 
 namespace Memphis.API.Controllers;
@@ -15,10 +14,21 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class EmailLogsController(DatabaseContext context, RedisService redisService, ISentryClient sentryHub,
-        ILogger<EmailLogsController> logger)
-    : ControllerBase
+public class EmailLogsController : ControllerBase
 {
+    private readonly DatabaseContext _context;
+    private readonly RedisService _redisService;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<EmailLogsController> _logger;
+
+    public EmailLogsController(DatabaseContext context, RedisService redisService, ISentryClient sentryHub, ILogger<EmailLogsController> logger)
+    {
+        _context = context;
+        _redisService = redisService;
+        _sentryHub = sentryHub;
+        _logger = logger;
+    }
+
     [HttpGet]
     [Authorize(Roles = Constants.CanEmailLogs)]
     [ProducesResponseType(typeof(Response<IList<EmailLog>>), 200)]
@@ -27,10 +37,12 @@ public class EmailLogsController(DatabaseContext context, RedisService redisServ
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEmailLogsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEmailLogsList))
+            {
                 return StatusCode(401);
+            }
 
-            var raw = context.EmailLogs.OrderBy(x => x.Timestamp);
+            var raw = _context.EmailLogs.OrderBy(x => x.Timestamp);
             if (to != null)
                 raw.Where(x => x.To.ToLower() == to.ToLower());
             var result = await raw.Skip((page - 1) * size).Take(size).ToListAsync();
@@ -47,8 +59,8 @@ public class EmailLogsController(DatabaseContext context, RedisService redisServ
         }
         catch (Exception ex)
         {
-            logger.LogError("GetEmailLogs error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetEmailLogs error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

@@ -2,13 +2,13 @@
 using Memphis.API.Extensions;
 using Memphis.API.Services;
 using Memphis.Shared.Dtos.auth;
+using Memphis.Shared.Dtos.Auth;
 using Memphis.Shared.Enums;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
-using Sentry;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -18,10 +18,22 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class AuthController(DatabaseContext context, RedisService redisService, ISentryClient sentryHub,
-        ILogger<AuthController> logger)
-    : ControllerBase
+public class AuthController : ControllerBase
 {
+    private readonly DatabaseContext _context;
+    private readonly RedisService _redisService;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<AuthController> _logger;
+
+    public AuthController(DatabaseContext context, RedisService redisService, ISentryClient sentryHub, ILogger<AuthController> logger)
+    {
+        _context = context;
+        _redisService = redisService;
+        _sentryHub = sentryHub;
+        _logger = logger;
+    }
+
+
     [HttpGet("redirect")]
     [ProducesResponseType(301)]
     [ProducesResponseType(typeof(Response<Guid>), 500)]
@@ -42,14 +54,14 @@ public class AuthController(DatabaseContext context, RedisService redisService, 
         }
         catch (Exception ex)
         {
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
-    [HttpGet("callback")]
-    [ProducesResponseType(301)]
+    [HttpPost("callback")]
+    [ProducesResponseType(typeof(Response<string>), 200)]
     [ProducesResponseType(typeof(Response<Guid>), 500)]
-    public async Task<IActionResult> ProcessCallback(string code)
+    public async Task<ActionResult<Response<string>>> ProcessCallback(CodeDto payload)
     {
         try
         {
@@ -61,8 +73,6 @@ public class AuthController(DatabaseContext context, RedisService redisService, 
                                throw new ArgumentNullException("CONNECT_CLIENT_SECRET env variable not found");
             var redirectUrl = Environment.GetEnvironmentVariable("CONNECT_REDIRECT_URL") ??
                               throw new ArgumentNullException("CONNECT_REDIRECT_URL env variable not found");
-            var uiRedirect = Environment.GetEnvironmentVariable("CONNEXT_REDIRECT_URL_UI") ??
-                             throw new ArgumentNullException("CONNEXT_REDIRECT_URL_UI env variable not found");
             var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ??
                          throw new ArgumentNullException("JWT_ISSUER env variable not found");
             var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ??
@@ -77,7 +87,7 @@ public class AuthController(DatabaseContext context, RedisService redisService, 
             {
                 ["client_id"] = clientId,
                 ["client_secret"] = clientSecret,
-                ["code"] = code,
+                ["code"] = payload.Code,
                 ["grant_type"] = "authorization_code",
                 ["redirect_uri"] = redirectUrl
             });
@@ -92,7 +102,7 @@ public class AuthController(DatabaseContext context, RedisService redisService, 
             var token = JsonConvert.DeserializeObject<VatsimTokenDto>(content);
             if (token == null)
             {
-                logger.LogError("Invalid VATSIM token response:\nconnect response code: {Code}\ncontent: {Content}",
+                _logger.LogError("Invalid VATSIM token response:\nconnect response code: {Code}\ncontent: {Content}",
                     response.StatusCode, content);
                 throw new InvalidDataException("Invalid VATSIM token response");
             }
@@ -102,7 +112,7 @@ public class AuthController(DatabaseContext context, RedisService redisService, 
 
             if (data == null)
             {
-                logger.LogError("Invalid VATSIM data response:\nconnect response code: {Code}\ndata: {Data}",
+                _logger.LogError("Invalid VATSIM data response:\nconnect response code: {Code}\ndata: {Data}",
                     response.StatusCode, data);
                 throw new InvalidDataException("Invalid VATSIM data response");
             }
@@ -119,7 +129,7 @@ public class AuthController(DatabaseContext context, RedisService redisService, 
                 new("region", data.Data.VatsimDetails.Region.Id),
                 new("division", data.Data.VatsimDetails.Division.Id),
             };
-            var user = await context.Users.Include(x => x.Roles).FirstOrDefaultAsync(x => x.Id == data.Data.Cid);
+            var user = await _context.Users.Include(x => x.Roles).FirstOrDefaultAsync(x => x.Id == data.Data.Cid);
 
             if (user == null || user.Status == UserStatus.REMOVED)
             {
@@ -136,7 +146,12 @@ public class AuthController(DatabaseContext context, RedisService redisService, 
                     )
                 );
                 var accessTokenNone = new JwtSecurityTokenHandler().WriteToken(jwtNone);
-                return RedirectPreserveMethod($"{uiRedirect}?accessToken={accessTokenNone}");
+                return Ok(new Response<string>
+                {
+                    StatusCode = 200,
+                    Message = "Logged in",
+                    Data = accessTokenNone
+                });
             }
 
             claims.Add(new Claim("isMember", $"{true}"));
@@ -151,7 +166,7 @@ public class AuthController(DatabaseContext context, RedisService redisService, 
                 roles.AddRange(user.Roles.Select(x => x.NameShort).ToList());
             claims.AddRange(roles.Select(x => new Claim("roles", x)));
 
-            await redisService.SetRoles(roles, user.Id);
+            await _redisService.SetRoles(roles, user.Id);
 
             var jwt = new JwtSecurityToken(
                 issuer,
@@ -163,11 +178,16 @@ public class AuthController(DatabaseContext context, RedisService redisService, 
                 )
             );
             var accessToken = new JwtSecurityTokenHandler().WriteToken(jwt);
-            return RedirectPreserveMethod($"{uiRedirect}?accessToken={accessToken}");
+            return Ok(new Response<string>
+            {
+                StatusCode = 200,
+                Message = "Logged in",
+                Data = accessToken
+            });
         }
         catch (Exception ex)
         {
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

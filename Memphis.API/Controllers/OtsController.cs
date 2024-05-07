@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 
 namespace Memphis.API.Controllers;
@@ -17,10 +16,24 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class OtsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        ISentryClient sentryHub, ILogger<OtsController> logger)
-    : ControllerBase
+public class OtsController : ControllerBase
 {
+    private readonly DatabaseContext _context;
+    private readonly RedisService _redisService;
+    private readonly LoggingService _loggingService;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<OtsController> _logger;
+
+    public OtsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
+        ISentryClient sentryHub, ILogger<OtsController> logger)
+    {
+        _context = context;
+        _redisService = redisService;
+        _loggingService = loggingService;
+        _sentryHub = sentryHub;
+        _logger = logger;
+    }
+
     [HttpGet]
     [Authorize(Roles = Constants.CanOts)]
     [ProducesResponseType(typeof(ResponsePaging<IList<OtsDto>>), 201)]
@@ -31,8 +44,10 @@ public class OtsController(DatabaseContext context, RedisService redisService, L
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanOtsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanOtsList))
+            {
                 return StatusCode(401);
+            }
 
             if (page < 1)
             {
@@ -52,12 +67,12 @@ public class OtsController(DatabaseContext context, RedisService redisService, L
                 });
             }
 
-            var result = await context.Ots
+            var result = await _context.Ots
                 .Include(x => x.Submitter).Include(x => x.User)
                 .Include(x => x.Instructor).Include(x => x.Milestone)
                 .OrderBy(x => x.Status).ThenBy(x => x.Updated)
                 .Skip((page - 1) * size).Take(size).ToListAsync();
-            var resultCount = await context.Ots.CountAsync();
+            var resultCount = await _context.Ots.CountAsync();
             return StatusCode(201, new ResponsePaging<IList<OtsDto>>
             {
                 StatusCode = 201,
@@ -69,8 +84,8 @@ public class OtsController(DatabaseContext context, RedisService redisService, L
         }
         catch (Exception ex)
         {
-            logger.LogError("GetOtsList error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetOtsList error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -85,10 +100,12 @@ public class OtsController(DatabaseContext context, RedisService redisService, L
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanOtsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanOtsList))
+            {
                 return StatusCode(401);
+            }
 
-            var result = await context.Ots
+            var result = await _context.Ots
                 .Include(x => x.Submitter)
                 .Include(x => x.User)
                 .Include(x => x.Instructor)
@@ -111,8 +128,8 @@ public class OtsController(DatabaseContext context, RedisService redisService, L
         }
         catch (Exception ex)
         {
-            logger.LogError("GetOts error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetOts error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -128,10 +145,12 @@ public class OtsController(DatabaseContext context, RedisService redisService, L
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanOtsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanOtsList))
+            {
                 return StatusCode(401);
+            }
 
-            var ots = await context.Ots.FindAsync(payload.Id);
+            var ots = await _context.Ots.FindAsync(payload.Id);
             if (ots == null)
             {
                 return NotFound(new Response<string?>
@@ -144,7 +163,7 @@ public class OtsController(DatabaseContext context, RedisService redisService, L
             var oldData = JsonConvert.SerializeObject(ots);
             if (payload.Instructor != null)
             {
-                var instructor = await context.Users.FindAsync(payload.Instructor);
+                var instructor = await _context.Users.FindAsync(payload.Instructor);
                 if (instructor == null)
                 {
                     return NotFound(new Response<string?>
@@ -179,10 +198,10 @@ public class OtsController(DatabaseContext context, RedisService redisService, L
                 ots.Status = OtsStatus.ASSIGNED;
             }
 
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(ots);
 
-            await loggingService.AddWebsiteLog(Request, $"Updated OTS '{payload.Id}'", oldData, newData);
+            await _loggingService.AddWebsiteLog(Request, $"Updated OTS '{payload.Id}'", oldData, newData);
 
             return Ok(new Response<OtsDto>
             {
@@ -193,8 +212,8 @@ public class OtsController(DatabaseContext context, RedisService redisService, L
         }
         catch (Exception ex)
         {
-            logger.LogError("UpdateOts error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("UpdateOts error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -209,10 +228,12 @@ public class OtsController(DatabaseContext context, RedisService redisService, L
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorTrainingStaffList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorTrainingStaffList))
+            {
                 return StatusCode(401);
+            }
 
-            var ots = await context.Ots.FindAsync(otsId);
+            var ots = await _context.Ots.FindAsync(otsId);
             if (ots == null)
             {
                 return NotFound(new Response<string?>
@@ -223,9 +244,9 @@ public class OtsController(DatabaseContext context, RedisService redisService, L
             }
 
             var oldData = JsonConvert.SerializeObject(ots);
-            context.Ots.Remove(ots);
-            await context.SaveChangesAsync();
-            await loggingService.AddWebsiteLog(Request, $"Deleted OTS '{otsId}'", oldData, string.Empty);
+            _context.Ots.Remove(ots);
+            await _context.SaveChangesAsync();
+            await _loggingService.AddWebsiteLog(Request, $"Deleted OTS '{otsId}'", oldData, string.Empty);
 
             return Ok(new Response<string?>
             {
@@ -235,8 +256,8 @@ public class OtsController(DatabaseContext context, RedisService redisService, L
         }
         catch (Exception ex)
         {
-            logger.LogError("DeleteOts error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("DeleteOts error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 
 namespace Memphis.API.Controllers;
@@ -15,10 +14,24 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class SettingsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        ISentryClient sentryHub, ILogger<SettingsController> logger)
-    : ControllerBase
+public class SettingsController : ControllerBase
 {
+    private readonly DatabaseContext _context;
+    private readonly RedisService _redisService;
+    private readonly LoggingService _loggingService;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<SettingsController> _logger;
+
+    public SettingsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
+        ISentryClient sentryHub, ILogger<SettingsController> logger)
+    {
+        _context = context;
+        _redisService = redisService;
+        _loggingService = loggingService;
+        _sentryHub = sentryHub;
+        _logger = logger;
+    }
+
     [HttpGet]
     [Authorize(Roles = Constants.SeniorStaff)]
     [ProducesResponseType(401)]
@@ -30,10 +43,12 @@ public class SettingsController(DatabaseContext context, RedisService redisServi
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList))
+            {
                 return StatusCode(401);
+            }
 
-            var settings = await context.Settings.FirstOrDefaultAsync();
+            var settings = await _context.Settings.FirstOrDefaultAsync();
             if (settings == null)
             {
                 return NotFound(new Response<string?>
@@ -52,8 +67,8 @@ public class SettingsController(DatabaseContext context, RedisService redisServi
         }
         catch (Exception ex)
         {
-            logger.LogError("GetSettings error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetSettings error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -69,10 +84,12 @@ public class SettingsController(DatabaseContext context, RedisService redisServi
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList))
+            {
                 return StatusCode(401);
+            }
 
-            var settings = await context.Settings.FirstOrDefaultAsync();
+            var settings = await _context.Settings.FirstOrDefaultAsync();
             if (settings == null)
             {
                 return NotFound(new Response<string?>
@@ -85,10 +102,10 @@ public class SettingsController(DatabaseContext context, RedisService redisServi
             var oldData = JsonConvert.SerializeObject(settings);
             settings.VisitingOpen = payload.VisitingOpen;
             settings.RequiredHours = payload.RequiredHours;
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(settings);
 
-            await loggingService.AddWebsiteLog(Request, "Updated settings", oldData, newData);
+            await _loggingService.AddWebsiteLog(Request, "Updated settings", oldData, newData);
 
             return Ok(new Response<Settings>
             {
@@ -99,8 +116,8 @@ public class SettingsController(DatabaseContext context, RedisService redisServi
         }
         catch (Exception ex)
         {
-            logger.LogError("GetSettings error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetSettings error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

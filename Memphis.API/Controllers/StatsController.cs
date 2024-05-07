@@ -7,16 +7,25 @@ using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Sentry;
 
 namespace Memphis.API.Controllers;
 
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class StatsController(DatabaseContext context, ISentryClient sentryHub, ILogger<StatsController> logger)
-    : ControllerBase
+public class StatsController : ControllerBase
 {
+    private readonly DatabaseContext _context;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<StatsController> _logger;
+
+    public StatsController(DatabaseContext context, ISentryClient sentryHub, ILogger<StatsController> logger)
+    {
+        _context = context;
+        _sentryHub = sentryHub;
+        _logger = logger;
+    }
+
     [HttpGet("atc")]
     [Authorize]
     [ProducesResponseType(typeof(Response<AtcStatsDto>), 200)]
@@ -38,69 +47,69 @@ public class StatsController(DatabaseContext context, ISentryClient sentryHub, I
             var startReal = new DateTimeOffset(start).ToUniversalTime();
             var endReal = new DateTimeOffset(end).ToUniversalTime();
 
-            var s1Sessions = await context.Sessions
+            var s1Sessions = await _context.Sessions
                 .Include(x => x.User)
                 .Where(x => x.Start >= startReal && x.End <= endReal)
                 .Where(x => x.User.Rating == Rating.S1)
                 .CountAsync();
-            var s2Sessions = await context.Sessions
+            var s2Sessions = await _context.Sessions
                 .Include(x => x.User)
                 .Where(x => x.Start >= startReal && x.End <= endReal)
                 .Where(x => x.User.Rating == Rating.S2)
                 .CountAsync();
-            var s3Sessions = await context.Sessions
+            var s3Sessions = await _context.Sessions
                 .Include(x => x.User)
                 .Where(x => x.Start >= startReal && x.End <= endReal)
                 .Where(x => x.User.Rating == Rating.S3)
                 .CountAsync();
-            var c1Sessions = await context.Sessions
+            var c1Sessions = await _context.Sessions
                 .Include(x => x.User)
                 .Where(x => x.Start >= startReal && x.End <= endReal)
                 .Where(x => x.User.Rating == Rating.C1)
                 .CountAsync();
-            var c3Sessions = await context.Sessions
+            var c3Sessions = await _context.Sessions
                 .Include(x => x.User)
                 .Where(x => x.Start >= startReal && x.End <= endReal)
                 .Where(x => x.User.Rating == Rating.C3)
                 .CountAsync();
-            var i1Sessions = await context.Sessions
+            var i1Sessions = await _context.Sessions
                 .Include(x => x.User)
                 .Where(x => x.Start >= startReal && x.End <= endReal)
                 .Where(x => x.User.Rating == Rating.I1)
                 .CountAsync();
-            var i3Sessions = await context.Sessions
+            var i3Sessions = await _context.Sessions
                 .Include(x => x.User)
                 .Where(x => x.Start >= startReal && x.End <= endReal)
                 .Where(x => x.User.Rating == Rating.I3)
                 .CountAsync();
-            var supSessions = await context.Sessions
+            var supSessions = await _context.Sessions
                 .Include(x => x.User)
                 .Where(x => x.Start >= startReal && x.End <= endReal)
                 .Where(x => x.User.Rating == Rating.SUP)
                 .CountAsync();
-            var admSessions = await context.Sessions
+            var admSessions = await _context.Sessions
                 .Include(x => x.User)
                 .Where(x => x.Start >= startReal && x.End <= endReal)
                 .Where(x => x.User.Rating == Rating.ADM)
                 .CountAsync();
-            var deliverySessions = await context.Sessions
+            var deliverySessions = await _context.Sessions
                 .Where(x => x.Start >= startReal && x.End <= endReal)
                 .Where(x => x.Callsign.ToUpper().EndsWith("_DEL"))
                 .CountAsync();
-            var groundSessions = await context.Sessions
+            var groundSessions = await _context.Sessions
                 .Where(x => x.Start >= startReal && x.End <= endReal)
                 .Where(x => x.Callsign.ToUpper().EndsWith("_GND"))
                 .CountAsync();
-            var towerSessions = await context.Sessions
+            var towerSessions = await _context.Sessions
                 .Where(x => x.Start >= startReal && x.End <= endReal)
                 .Where(x => x.Callsign.ToUpper().EndsWith("_TWR"))
                 .CountAsync();
-            var traconSessions = await context.Sessions
+            var traconSessions = await _context.Sessions
                 .Where(x => x.Start >= startReal && x.End <= endReal)
                 .Where(x => x.Callsign.ToUpper().EndsWith("_APP") ||
                             x.Callsign.ToUpper().EndsWith("_DEP"))
                 .CountAsync();
-            var centerSessions = await context.Sessions
+            var centerSessions = await _context.Sessions
                 .Where(x => x.Start >= startReal && x.End <= endReal)
                 .Where(x => x.Callsign.ToUpper().EndsWith("_CTR"))
                 .CountAsync();
@@ -129,8 +138,8 @@ public class StatsController(DatabaseContext context, ISentryClient sentryHub, I
         }
         catch (Exception ex)
         {
-            logger.LogError("GetStats error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetStats error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -156,11 +165,11 @@ public class StatsController(DatabaseContext context, ISentryClient sentryHub, I
             var endReal = new DateTimeOffset(end).ToUniversalTime();
 
             var result = new List<Dictionary<TrainingMilestone, int>>();
-            var milestones = await context.TrainingMilestones.ToListAsync();
+            var milestones = await _context.TrainingMilestones.ToListAsync();
 
             foreach (var entry in milestones)
             {
-                var count = await context.TrainingTickets
+                var count = await _context.TrainingTickets
                     .Include(x => x.Milestone)
                     .Where(x => x.Start >= startReal && x.End <= endReal)
                     .CountAsync();
@@ -179,8 +188,8 @@ public class StatsController(DatabaseContext context, ISentryClient sentryHub, I
         }
         catch (Exception ex)
         {
-            logger.LogError("GetTrainingStats error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetTrainingStats error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -206,7 +215,7 @@ public class StatsController(DatabaseContext context, ISentryClient sentryHub, I
             var startReal = new DateTimeOffset(start).ToUniversalTime();
             var endReal = new DateTimeOffset(end).ToUniversalTime();
 
-            var users = await context.Users
+            var users = await _context.Users
                 .Include(x => x.Roles)
                 .Where(x => x.Roles != null && (
                     x.Roles.Any(c => c.NameShort == "MTR") ||
@@ -217,7 +226,7 @@ public class StatsController(DatabaseContext context, ISentryClient sentryHub, I
             foreach (var entry in users)
             {
                 var rosterUser = RosterUserDto.Parse(entry);
-                var trainingCount = await context.TrainingTickets
+                var trainingCount = await _context.TrainingTickets
                     .Include(x => x.User)
                     .Where(x => x.Start >= startReal && x.End <= endReal)
                     .Where(x => x.Trainer == entry)
@@ -237,8 +246,8 @@ public class StatsController(DatabaseContext context, ISentryClient sentryHub, I
         }
         catch (Exception ex)
         {
-            logger.LogError("GetTrainingStaffStats error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetTrainingStaffStats error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

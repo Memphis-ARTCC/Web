@@ -1,10 +1,6 @@
-﻿#region
-
-using Memphis.Shared.Models;
+﻿using Memphis.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 using File = Memphis.Shared.Models.File;
-
-#endregion
 
 namespace Memphis.API.Data;
 
@@ -16,7 +12,6 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
     public required DbSet<Event> Events { get; set; }
     public required DbSet<EventPosition> EventPositions { get; set; }
     public required DbSet<EventRegistration> EventRegistrations { get; set; }
-    public required DbSet<Faq> Faq { get; set; }
     public required DbSet<Feedback> Feedback { get; set; }
     public required DbSet<File> Files { get; set; }
     public required DbSet<Hours> Hours { get; set; }

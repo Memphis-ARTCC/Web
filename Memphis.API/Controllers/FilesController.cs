@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 using File = Memphis.Shared.Models.File;
 
@@ -19,11 +18,28 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class FilesController(DatabaseContext context, RedisService redisService, S3Service s3Service,
-        LoggingService loggingService, IValidator<FileDto> validator, ISentryClient sentryHub,
-        ILogger<FilesController> logger)
-    : ControllerBase
+public class FilesController : ControllerBase
 {
+    private readonly DatabaseContext _context;
+    private readonly RedisService _redisService;
+    private readonly S3Service _s3Service;
+    private readonly LoggingService _loggingService;
+    private readonly IValidator<FileDto> _validator;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<FilesController> _logger;
+
+    public FilesController(DatabaseContext context, RedisService redisService, S3Service s3Service, LoggingService loggingService,
+        IValidator<FileDto> validator, ISentryClient sentryHub, ILogger<FilesController> logger)
+    {
+        _context = context;
+        _redisService = redisService;
+        _s3Service = s3Service;
+        _loggingService = loggingService;
+        _validator = validator;
+        _sentryHub = sentryHub;
+        _logger = logger;
+    }
+
     [HttpPost]
     [Authorize(Roles = Constants.CanFiles)]
     [ProducesResponseType(typeof(Response<File>), 201)]
@@ -36,10 +52,12 @@ public class FilesController(DatabaseContext context, RedisService redisService,
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFilesList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFilesList))
+            {
                 return StatusCode(401);
+            }
 
-            var validation = await validator.ValidateAsync(payload);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -69,8 +87,8 @@ public class FilesController(DatabaseContext context, RedisService redisService,
                 });
             }
 
-            var fileUrl = await s3Service.UploadFile(Request, "files");
-            var result = await context.Files.AddAsync(new File
+            var fileUrl = await _s3Service.UploadFile(Request, "files");
+            var result = await _context.Files.AddAsync(new File
             {
                 Title = payload.Title,
                 Description = payload.Description,
@@ -79,7 +97,7 @@ public class FilesController(DatabaseContext context, RedisService redisService,
                 Type = payload.Type
             });
             var newData = JsonConvert.SerializeObject(result.Entity);
-            await loggingService.AddWebsiteLog(Request, $"Created file '{result.Entity.Id}'", string.Empty, newData);
+            await _loggingService.AddWebsiteLog(Request, $"Created file '{result.Entity.Id}'", string.Empty, newData);
 
             return StatusCode(201, new Response<File>
             {
@@ -90,8 +108,8 @@ public class FilesController(DatabaseContext context, RedisService redisService,
         }
         catch (Exception ex)
         {
-            logger.LogError("CreateFile error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("CreateFile error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -103,12 +121,10 @@ public class FilesController(DatabaseContext context, RedisService redisService,
     {
         try
         {
-            var isStaff = await redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList);
-            var isSeniorStaff =
-                await redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList);
-            var isTrainingStaff =
-                await redisService.ValidateRoles(Request.HttpContext.User, Constants.TrainingStaffList);
-            var resultQuery = context.Files.AsQueryable();
+            var isStaff = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList);
+            var isSeniorStaff = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList);
+            var isTrainingStaff = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.TrainingStaffList);
+            var resultQuery = _context.Files.AsQueryable();
             if (!isStaff)
             {
                 resultQuery = resultQuery.Where(x => x.Type != FileType.STAFF);
@@ -134,8 +150,8 @@ public class FilesController(DatabaseContext context, RedisService redisService,
         }
         catch (Exception ex)
         {
-            logger.LogError("GetFiles error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetFiles error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -149,7 +165,7 @@ public class FilesController(DatabaseContext context, RedisService redisService,
     {
         try
         {
-            var result = await context.Files.FindAsync(fileId);
+            var result = await _context.Files.FindAsync(fileId);
             if (result == null)
             {
                 return NotFound(new Response<string?>
@@ -168,8 +184,8 @@ public class FilesController(DatabaseContext context, RedisService redisService,
         }
         catch (Exception ex)
         {
-            logger.LogError("GetFile error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetFile error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -185,10 +201,12 @@ public class FilesController(DatabaseContext context, RedisService redisService,
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFilesList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFilesList))
+            {
                 return StatusCode(401);
+            }
 
-            var validation = await validator.ValidateAsync(payload);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -199,7 +217,7 @@ public class FilesController(DatabaseContext context, RedisService redisService,
                 });
             }
 
-            var file = await context.Files.FindAsync(payload.Id);
+            var file = await _context.Files.FindAsync(payload.Id);
             if (file == null)
             {
                 return NotFound(new Response<string?>
@@ -215,8 +233,8 @@ public class FilesController(DatabaseContext context, RedisService redisService,
             {
                 if (file.FileUrl != null)
                 {
-                    await s3Service.DeleteFile(file.FileUrl);
-                    var newUrl = await s3Service.UploadFile(Request, "files");
+                    await _s3Service.DeleteFile(file.FileUrl);
+                    var newUrl = await _s3Service.UploadFile(Request, "files");
                     if (newUrl != null)
                     {
                         file.FileUrl = newUrl;
@@ -228,10 +246,10 @@ public class FilesController(DatabaseContext context, RedisService redisService,
             file.Description = payload.Description;
             file.Version = payload.Version;
             file.Type = payload.Type;
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(file);
 
-            await loggingService.AddWebsiteLog(Request, $"Updated file '{file.Id}'", oldData, newData);
+            await _loggingService.AddWebsiteLog(Request, $"Updated file '{file.Id}'", oldData, newData);
 
             return Ok(new Response<File>
             {
@@ -242,8 +260,8 @@ public class FilesController(DatabaseContext context, RedisService redisService,
         }
         catch (Exception ex)
         {
-            logger.LogError("UpdateFile error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("UpdateFile error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

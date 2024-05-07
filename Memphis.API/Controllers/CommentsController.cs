@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 
 namespace Memphis.API.Controllers;
@@ -18,10 +17,26 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class CommentsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<CommentDto> validator, ISentryClient sentryHub, ILogger<CommentsController> logger)
-    : ControllerBase
+public class CommentsController : ControllerBase
 {
+    private readonly DatabaseContext _context;
+    private readonly RedisService _redisService;
+    private readonly LoggingService _loggingService;
+    private readonly IValidator<CommentDto> _validator;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<CommentsController> _logger;
+
+    public CommentsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
+        IValidator<CommentDto> validator, ISentryClient sentryHub, ILogger<CommentsController> logger)
+    {
+        _context = context;
+        _redisService = redisService;
+        _loggingService = loggingService;
+        _validator = validator;
+        _sentryHub = sentryHub;
+        _logger = logger;
+    }
+
     [HttpPost]
     [Authorize(Roles = Constants.CanComment)]
     [ProducesResponseType(typeof(Response<Comment>), 201)]
@@ -34,15 +49,18 @@ public class CommentsController(DatabaseContext context, RedisService redisServi
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentList))
+            {
                 return StatusCode(401);
+            }
 
             // Check if they can add a confidential comment
-            if (payload.Confidential &&
-                !await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentConfidentialList))
+            if (payload.Confidential && !await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentConfidentialList))
+            {
                 return StatusCode(401);
+            }
 
-            var validation = await validator.ValidateAsync(payload);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -53,7 +71,7 @@ public class CommentsController(DatabaseContext context, RedisService redisServi
                 });
             }
 
-            var user = await context.Users.FindAsync(payload.UserId);
+            var user = await _context.Users.FindAsync(payload.UserId);
             if (user == null)
             {
                 return NotFound(new Response<int>
@@ -64,7 +82,7 @@ public class CommentsController(DatabaseContext context, RedisService redisServi
                 });
             }
 
-            var submitter = await Request.HttpContext.GetUser(context);
+            var submitter = await Request.HttpContext.GetUser(_context);
             if (submitter == null)
             {
                 return NotFound(new Response<int>
@@ -75,7 +93,7 @@ public class CommentsController(DatabaseContext context, RedisService redisServi
                 });
             }
 
-            var result = await context.Comments.AddAsync(new Comment
+            var result = await _context.Comments.AddAsync(new Comment
             {
                 User = user,
                 Submitter = submitter,
@@ -83,11 +101,10 @@ public class CommentsController(DatabaseContext context, RedisService redisServi
                 Title = payload.Title,
                 Description = payload.Description,
             });
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);
 
-            await loggingService.AddWebsiteLog(Request, $"Created comment '{result.Entity.Id}'", string.Empty,
-                newData);
+            await _loggingService.AddWebsiteLog(Request, $"Created comment '{result.Entity.Id}'", string.Empty, newData);
 
             return StatusCode(201, new Response<Comment>
             {
@@ -98,8 +115,8 @@ public class CommentsController(DatabaseContext context, RedisService redisServi
         }
         catch (Exception ex)
         {
-            logger.LogError("CreateComment error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("CreateComment error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -133,7 +150,7 @@ public class CommentsController(DatabaseContext context, RedisService redisServi
                 });
             }
 
-            var user = await context.Users.FindAsync(userId);
+            var user = await _context.Users.FindAsync(userId);
             if (user == null)
             {
                 return NotFound(new Response<int>
@@ -144,14 +161,14 @@ public class CommentsController(DatabaseContext context, RedisService redisServi
                 });
             }
 
-            if (await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentConfidentialList))
+            if (await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentConfidentialList))
             {
-                var confidentialResult = await context.Comments
+                var confidentialResult = await _context.Comments
                     .Where(x => x.User == user)
                     .OrderBy(x => x.Timestamp)
                     .Skip((page - 1) * size).Take(size)
                     .ToListAsync();
-                var confidentialTotalCount = await context.Comments
+                var confidentialTotalCount = await _context.Comments
                     .Where(x => x.User == user).CountAsync();
                 return Ok(new ResponsePaging<IList<Comment>>
                 {
@@ -163,15 +180,15 @@ public class CommentsController(DatabaseContext context, RedisService redisServi
                 });
             }
 
-            if (await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentList))
+            if (await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentList))
             {
-                var result = await context.Comments
+                var result = await _context.Comments
                     .Where(x => x.User == user)
                     .Where(x => !x.Confidential)
                     .OrderBy(x => x.Timestamp)
                     .Skip((page - 1) * size).Take(size)
                     .ToListAsync();
-                var totalCount = await context.Comments
+                var totalCount = await _context.Comments
                     .Where(x => x.User == user)
                     .Where(x => !x.Confidential)
                     .OrderBy(x => x.Timestamp).CountAsync();
@@ -189,8 +206,8 @@ public class CommentsController(DatabaseContext context, RedisService redisServi
         }
         catch (Exception ex)
         {
-            logger.LogError("GetComments error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetComments error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -205,10 +222,12 @@ public class CommentsController(DatabaseContext context, RedisService redisServi
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList))
+            {
                 return StatusCode(401);
+            }
 
-            var comment = await context.Comments.FindAsync(commentId);
+            var comment = await _context.Comments.FindAsync(commentId);
             if (comment == null)
             {
                 return NotFound(new Response<int>
@@ -220,10 +239,10 @@ public class CommentsController(DatabaseContext context, RedisService redisServi
             }
 
             var oldData = JsonConvert.SerializeObject(comment);
-            context.Comments.Remove(comment);
-            await context.SaveChangesAsync();
+            _context.Comments.Remove(comment);
+            await _context.SaveChangesAsync();
 
-            await loggingService.AddWebsiteLog(Request, $"Deleted comment '{commentId}'", oldData, string.Empty);
+            await _loggingService.AddWebsiteLog(Request, $"Deleted comment '{commentId}'", oldData, string.Empty);
 
             return Ok(new Response<string?>
             {
@@ -233,8 +252,8 @@ public class CommentsController(DatabaseContext context, RedisService redisServi
         }
         catch (Exception ex)
         {
-            logger.LogError("GetComments error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetComments error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }

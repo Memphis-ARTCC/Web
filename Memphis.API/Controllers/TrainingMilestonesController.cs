@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 
 namespace Memphis.API.Controllers;
@@ -17,11 +16,26 @@ namespace Memphis.API.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
-public class TrainingMilestonesController(DatabaseContext context, RedisService redisService,
-        LoggingService loggingService, IValidator<TrainingMilestone> validator, ISentryClient sentryHub,
-        ILogger<TrainingMilestonesController> logger)
-    : ControllerBase
+public class TrainingMilestonesController : ControllerBase
 {
+    private readonly DatabaseContext _context;
+    private readonly RedisService _redisService;
+    private readonly LoggingService _loggingService;
+    private readonly IValidator<TrainingMilestone> _validator;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<TrainingMilestonesController> _logger;
+
+    public TrainingMilestonesController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
+        IValidator<TrainingMilestone> validator, ISentryClient sentryHub, ILogger<TrainingMilestonesController> logger)
+    {
+        _context = context;
+        _redisService = redisService;
+        _loggingService = loggingService;
+        _validator = validator;
+        _sentryHub = sentryHub;
+        _logger = logger;
+    }
+
     [HttpPost]
     [Authorize(Roles = Constants.CanTrainingMilestones)]
     [ProducesResponseType(typeof(Response<TrainingMilestone>), 201)]
@@ -33,10 +47,12 @@ public class TrainingMilestonesController(DatabaseContext context, RedisService 
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanTrainingMilestonesList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanTrainingMilestonesList))
+            {
                 return StatusCode(401);
+            }
 
-            var validation = await validator.ValidateAsync(payload);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -47,7 +63,7 @@ public class TrainingMilestonesController(DatabaseContext context, RedisService 
                 });
             }
 
-            var result = await context.TrainingMilestones.AddAsync(new TrainingMilestone
+            var result = await _context.TrainingMilestones.AddAsync(new TrainingMilestone
             {
                 Code = payload.Code,
                 Name = payload.Name,
@@ -55,10 +71,10 @@ public class TrainingMilestonesController(DatabaseContext context, RedisService 
                 Created = DateTimeOffset.UtcNow,
                 Updated = DateTimeOffset.UtcNow
             });
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);
 
-            await loggingService.AddWebsiteLog(Request, $"Created training milestone '{result.Entity.Id}'",
+            await _loggingService.AddWebsiteLog(Request, $"Created training milestone '{result.Entity.Id}'",
                 string.Empty, newData);
 
             return StatusCode(201, new Response<TrainingMilestone>
@@ -70,8 +86,8 @@ public class TrainingMilestonesController(DatabaseContext context, RedisService 
         }
         catch (Exception ex)
         {
-            logger.LogError("CreateTrainingMilestone error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("CreateTrainingMilestone error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -83,7 +99,7 @@ public class TrainingMilestonesController(DatabaseContext context, RedisService 
     {
         try
         {
-            var milestones = await context.TrainingMilestones.ToListAsync();
+            var milestones = await _context.TrainingMilestones.ToListAsync();
             return Ok(new Response<IList<TrainingMilestone>>
             {
                 StatusCode = 200,
@@ -93,8 +109,8 @@ public class TrainingMilestonesController(DatabaseContext context, RedisService 
         }
         catch (Exception ex)
         {
-            logger.LogError("GetTrainingMilestones error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetTrainingMilestones error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -107,7 +123,7 @@ public class TrainingMilestonesController(DatabaseContext context, RedisService 
     {
         try
         {
-            var milestone = await context.TrainingMilestones.FindAsync(milestoneId);
+            var milestone = await _context.TrainingMilestones.FindAsync(milestoneId);
             if (milestone == null)
             {
                 return NotFound(new Response<string?>
@@ -126,8 +142,8 @@ public class TrainingMilestonesController(DatabaseContext context, RedisService 
         }
         catch (Exception ex)
         {
-            logger.LogError("GetTrainingMilestones error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("GetTrainingMilestones error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 
@@ -142,10 +158,12 @@ public class TrainingMilestonesController(DatabaseContext context, RedisService 
     {
         try
         {
-            if (!await redisService.ValidateRoles(Request.HttpContext.User, Constants.CanTrainingMilestonesList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanTrainingMilestonesList))
+            {
                 return StatusCode(401);
+            }
 
-            var validation = await validator.ValidateAsync(payload);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -156,7 +174,7 @@ public class TrainingMilestonesController(DatabaseContext context, RedisService 
                 });
             }
 
-            var milestone = await context.TrainingMilestones.FindAsync(payload.Id);
+            var milestone = await _context.TrainingMilestones.FindAsync(payload.Id);
             if (milestone == null)
             {
                 return NotFound(new Response<string?>
@@ -171,11 +189,10 @@ public class TrainingMilestonesController(DatabaseContext context, RedisService 
             milestone.Name = payload.Name;
             milestone.Facility = payload.Facility;
             milestone.Updated = payload.Updated;
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(milestone);
 
-            await loggingService.AddWebsiteLog(Request, $"Updated training milestone '{milestone.Id}'", oldData,
-                newData);
+            await _loggingService.AddWebsiteLog(Request, $"Updated training milestone '{milestone.Id}'", oldData, newData);
 
             return Ok(new Response<TrainingMilestone>
             {
@@ -186,8 +203,8 @@ public class TrainingMilestonesController(DatabaseContext context, RedisService 
         }
         catch (Exception ex)
         {
-            logger.LogError("UpdateTrainingMilestone error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
-            return sentryHub.CaptureException(ex).ReturnActionResult();
+            _logger.LogError("UpdateTrainingMilestone error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
 }
