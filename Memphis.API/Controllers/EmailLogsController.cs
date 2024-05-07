@@ -7,7 +7,6 @@ using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 
 namespace Memphis.API.Controllers;
@@ -19,13 +18,15 @@ public class EmailLogsController : ControllerBase
 {
     private readonly DatabaseContext _context;
     private readonly RedisService _redisService;
-    private readonly IHub _sentryHub;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<EmailLogsController> _logger;
 
-    public EmailLogsController(DatabaseContext context, RedisService redisService, IHub sentryHub)
+    public EmailLogsController(DatabaseContext context, RedisService redisService, ISentryClient sentryHub, ILogger<EmailLogsController> logger)
     {
         _context = context;
         _redisService = redisService;
         _sentryHub = sentryHub;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -37,7 +38,9 @@ public class EmailLogsController : ControllerBase
         try
         {
             if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEmailLogsList))
+            {
                 return StatusCode(401);
+            }
 
             var raw = _context.EmailLogs.OrderBy(x => x.Timestamp);
             if (to != null)
@@ -56,6 +59,7 @@ public class EmailLogsController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError("GetEmailLogs error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
             return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }

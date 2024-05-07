@@ -5,6 +5,5 @@ public enum OtsStatus
     PENDING,
     ASSIGNED,
     SCHEDULED,
-    PASSED,
-    FAILED
+    COMPLETE
 }

@@ -4,7 +4,6 @@ using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Sentry;
 
 namespace Memphis.API.Controllers;
 
@@ -14,11 +13,10 @@ namespace Memphis.API.Controllers;
 public class OnlineControllersController : ControllerBase
 {
     private readonly DatabaseContext _context;
-    private readonly IHub _sentryHub;
+    private readonly ISentryClient _sentryHub;
     private readonly ILogger<OnlineControllersController> _logger;
 
-    public OnlineControllersController(DatabaseContext context, IHub sentryHub,
-        ILogger<OnlineControllersController> logger)
+    public OnlineControllersController(DatabaseContext context, ISentryClient sentryHub, ILogger<OnlineControllersController> logger)
     {
         _context = context;
         _sentryHub = sentryHub;

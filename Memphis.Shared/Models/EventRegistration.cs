@@ -1,7 +1,14 @@
-﻿using Memphis.Shared.Enums;
+﻿#region
+
+using Memphis.Shared.Enums;
+using Microsoft.EntityFrameworkCore;
+
+#endregion
 
 namespace Memphis.Shared.Models;
 
+[Index(nameof(Status))]
+[Index(nameof(Start))]
 public class EventRegistration
 {
     public int Id { get; set; }

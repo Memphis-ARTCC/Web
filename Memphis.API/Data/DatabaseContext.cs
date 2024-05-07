@@ -1,23 +1,19 @@
 ﻿using Memphis.Shared.Models;
 using Microsoft.EntityFrameworkCore;
+using File = Memphis.Shared.Models.File;
 
 namespace Memphis.API.Data;
 
-public class DatabaseContext : DbContext
+public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbContext(options)
 {
-    public DatabaseContext(DbContextOptions<DatabaseContext> options) : base(options)
-    {
-    }
-
     public required DbSet<Airport> Airports { get; set; }
     public required DbSet<Comment> Comments { get; set; }
     public required DbSet<EmailLog> EmailLogs { get; set; }
     public required DbSet<Event> Events { get; set; }
     public required DbSet<EventPosition> EventPositions { get; set; }
     public required DbSet<EventRegistration> EventRegistrations { get; set; }
-    public required DbSet<Faq> Faq { get; set; }
     public required DbSet<Feedback> Feedback { get; set; }
-    public required DbSet<Shared.Models.File> Files { get; set; }
+    public required DbSet<File> Files { get; set; }
     public required DbSet<Hours> Hours { get; set; }
     public required DbSet<Notification> Notifications { get; set; }
     public required DbSet<OnlineController> OnlineControllers { get; set; }
@@ -26,6 +22,7 @@ public class DatabaseContext : DbContext
     public required DbSet<Session> Sessions { get; set; }
     public required DbSet<Settings> Settings { get; set; }
     public required DbSet<TrainingMilestone> TrainingMilestones { get; set; }
+    public required DbSet<TrainingScheduleEntry> TrainingScheduleEntries { get; set; }
     public required DbSet<TrainingSchedule> TrainingSchedules { get; set; }
     public required DbSet<TrainingTicket> TrainingTickets { get; set; }
     public required DbSet<TrainingType> TrainingTypes { get; set; }
@@ -35,7 +32,7 @@ public class DatabaseContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // seed roles
+        // Seed roles
         modelBuilder.Entity<Role>().HasData(new Role
         {
             Id = 1,
@@ -119,6 +116,15 @@ public class DatabaseContext : DbContext
             Name = "Mentor",
             NameShort = "MTR",
             Email = "mentors@memphisartcc.com"
+        });
+
+        // Settings
+        modelBuilder.Entity<Settings>().HasData(new Settings
+        {
+            Id = 1,
+            VisitingOpen = true,
+            RequiredHours = 3,
+            LastUpdated = DateTimeOffset.UtcNow
         });
     }
 }

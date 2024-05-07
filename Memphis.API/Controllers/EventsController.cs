@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 
 namespace Memphis.API.Controllers;
@@ -25,11 +24,11 @@ public class EventsController : ControllerBase
     private readonly LoggingService _loggingService;
     private readonly S3Service _s3Service;
     private readonly IValidator<EventDto> _validator;
-    private readonly IHub _sentryHub;
+    private readonly ISentryClient _sentryHub;
     private readonly ILogger<EventsController> _logger;
 
     public EventsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        S3Service s3Service, IValidator<EventDto> validator, IHub sentryHub, ILogger<EventsController> logger)
+        S3Service s3Service, IValidator<EventDto> validator, ISentryClient sentryHub, ILogger<EventsController> logger)
     {
         _context = context;
         _redisService = redisService;
@@ -42,19 +41,21 @@ public class EventsController : ControllerBase
 
     [HttpPost]
     [Authorize(Roles = Constants.CanEvents)]
-    [ProducesResponseType(typeof(Response<Comment>), 200)]
+    [ProducesResponseType(typeof(Response<Comment>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Event>>> CreateEvent(EventDto data)
+    public async Task<ActionResult<Response<Event>>> CreateEvent(EventDto payload)
     {
         try
         {
             if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            {
                 return StatusCode(401);
+            }
 
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -66,12 +67,12 @@ public class EventsController : ControllerBase
             }
 
             var errors = new List<ValidationFailure>();
-            if (data.Start <= DateTimeOffset.UtcNow)
-                errors.Add(new ValidationFailure(nameof(data.Start), "Start time must be in the future"));
-            if (data.Start > data.End)
-                errors.Add(new ValidationFailure(nameof(data.Start), "Start time must be before end time"));
-            if (data.End <= DateTimeOffset.UtcNow)
-                errors.Add(new ValidationFailure(nameof(data.End), "End time must be in the future"));
+            if (payload.Start <= DateTimeOffset.UtcNow)
+                errors.Add(new ValidationFailure(nameof(payload.Start), "Start time must be in the future"));
+            if (payload.Start > payload.End)
+                errors.Add(new ValidationFailure(nameof(payload.Start), "Start time must be before end time"));
+            if (payload.End <= DateTimeOffset.UtcNow)
+                errors.Add(new ValidationFailure(nameof(payload.End), "End time must be in the future"));
             if (errors.Count > 0)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -85,22 +86,22 @@ public class EventsController : ControllerBase
             var bannerUrl = await _s3Service.UploadFile(Request, "events");
             var result = await _context.Events.AddAsync(new Event
             {
-                Title = data.Title,
-                Description = data.Description,
-                Host = data.Host,
+                Title = payload.Title,
+                Description = payload.Description,
+                Host = payload.Host,
                 BannerUrl = bannerUrl,
-                Start = data.Start,
-                End = data.End,
-                IsOpen = data.IsOpen
+                Start = payload.Start,
+                End = payload.End,
+                IsOpen = payload.IsOpen
             });
             await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);
 
             await _loggingService.AddWebsiteLog(Request, $"Created event '{result.Entity.Id}'", string.Empty, newData);
 
-            return Ok(new Response<Event>
+            return StatusCode(201, new Response<Event>
             {
-                StatusCode = 200,
+                StatusCode = 201,
                 Message = $"Created event '{result.Entity.Id}'",
                 Data = result.Entity
             });
@@ -136,8 +137,12 @@ public class EventsController : ControllerBase
             }
             else
             {
-                var result = await _context.Events.OrderBy(x => x.Start).Where(x => x.IsOpen).Skip((page - 1) * size)
-                    .Take(size).ToListAsync();
+                var result = await _context.Events
+                    .OrderBy(x => x.Start)
+                    .Where(x => x.IsOpen)
+                    .Skip((page - 1) * size)
+                    .Take(size)
+                    .ToListAsync();
                 var totalCount = await _context.Events.Where(x => x.IsOpen).OrderBy(x => x.Start).CountAsync();
                 return Ok(new ResponsePaging<IList<Event>>
                 {
@@ -198,7 +203,7 @@ public class EventsController : ControllerBase
         }
     }
 
-    [HttpPut("{eventId:int}")]
+    [HttpPut]
     [Authorize(Roles = Constants.CanEvents)]
     [ProducesResponseType(typeof(Response<Event>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
@@ -206,14 +211,16 @@ public class EventsController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Event>>> UpdateEvent(int eventId, EventDto data)
+    public async Task<ActionResult<Response<Event>>> UpdateEvent(EventDto payload)
     {
         try
         {
             if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            {
                 return StatusCode(401);
+            }
 
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -224,13 +231,13 @@ public class EventsController : ControllerBase
                 });
             }
 
-            var @event = await _context.Events.FindAsync(eventId);
+            var @event = await _context.Events.FindAsync(payload.Id);
             if (@event == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"Event '{eventId}' not found"
+                    Message = $"Event '{payload.Id}' not found"
                 });
             }
 
@@ -242,17 +249,17 @@ public class EventsController : ControllerBase
                 await _s3Service.DeleteFile(@event.BannerUrl);
             }
 
-            @event.Title = data.Title;
-            @event.Description = data.Description;
-            @event.Host = data.Host;
+            @event.Title = payload.Title;
+            @event.Description = payload.Description;
+            @event.Host = payload.Host;
             if (newFile)
             {
                 @event.BannerUrl = await _s3Service.UploadFile(Request, "events");
             }
 
-            @event.Start = data.Start;
-            @event.End = data.End;
-            @event.IsOpen = data.IsOpen;
+            @event.Start = payload.Start;
+            @event.End = payload.End;
+            @event.IsOpen = payload.IsOpen;
             @event.Updated = DateTimeOffset.UtcNow;
             await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(@event);
@@ -286,7 +293,9 @@ public class EventsController : ControllerBase
         try
         {
             if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            {
                 return StatusCode(401);
+            }
 
             var @event = await _context.Events.FindAsync(eventId);
             if (@event == null)

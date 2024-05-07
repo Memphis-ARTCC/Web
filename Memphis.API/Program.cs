@@ -4,6 +4,7 @@ using Memphis.API.Data;
 using Memphis.API.Services;
 using Memphis.API.Validators;
 using Memphis.Shared.Dtos;
+using Memphis.Shared.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
@@ -31,7 +32,7 @@ builder.Logging.AddSerilog(logger, dispose: true);
 builder.WebHost.UseSentry(options =>
 {
     options.Dsn = Environment.GetEnvironmentVariable("SENTRY_DSN") ??
-        throw new ArgumentNullException("SENTRY_DSN env variable not found");
+                  throw new ArgumentNullException("SENTRY_DSN env variable not found");
     options.TracesSampleRate = 1.0;
 });
 
@@ -65,11 +66,11 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddDbContext<DatabaseContext>(options =>
 {
     options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING") ??
-        throw new ArgumentException("CONNECTION_STRING env variable not found"));
+                      throw new ArgumentException("CONNECTION_STRING env variable not found"));
 });
 
 var redisHost = Environment.GetEnvironmentVariable("REDIS_HOST") ??
-    throw new ArgumentNullException("REDIS_HOST env variable not found");
+                throw new ArgumentNullException("REDIS_HOST env variable not found");
 builder.Services.AddSingleton(ConnectionMultiplexer.Connect(redisHost).GetDatabase());
 
 builder.Services.AddAuthentication(options =>
@@ -84,13 +85,14 @@ builder.Services.AddAuthentication(options =>
     {
         ValidateIssuer = true,
         ValidIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ??
-            throw new ArgumentNullException("JWT_ISSUER env variable not found"),
+                      throw new ArgumentNullException("JWT_ISSUER env variable not found"),
         ValidateIssuerSigningKey = true,
         IssuerSigningKey =
             new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Environment.GetEnvironmentVariable("JWT_SECRET") ??
-            throw new ArgumentNullException("JWT_SECRET env variable not found"))),
+                                                             throw new ArgumentNullException(
+                                                                 "JWT_SECRET env variable not found"))),
         ValidAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ??
-            throw new ArgumentNullException("JWT_AUDIENCE env variable not found"),
+                        throw new ArgumentNullException("JWT_AUDIENCE env variable not found"),
         ValidateAudience = true,
         ValidateLifetime = true,
         ClockSkew = TimeSpan.FromMinutes(1)
@@ -106,10 +108,13 @@ builder.Services.AddScoped<IValidator<FaqDto>, FaqValidator>();
 builder.Services.AddScoped<IValidator<FeedbackDto>, FeedbackValidator>();
 builder.Services.AddScoped<IValidator<FileDto>, FileValidator>();
 builder.Services.AddScoped<IValidator<OtsDto>, OtsValidator>();
+builder.Services.AddScoped<IValidator<TrainingMilestone>, TrainingMilestoneValidator>();
+builder.Services.AddScoped<IValidator<TrainingScheduleDto>, TrainingScheduleValidator>();
 
 builder.Services.AddScoped<LoggingService>();
 builder.Services.AddScoped<RedisService>();
 builder.Services.AddScoped<S3Service>();
+builder.Services.AddScoped<VatusaService>();
 
 builder.Services.AddCors(options =>
 {

@@ -1,11 +1,9 @@
 ﻿using Memphis.API.Data;
 using Memphis.API.Extensions;
 using Memphis.Shared.Dtos;
-using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Sentry;
 
 namespace Memphis.API.Controllers;
 
@@ -15,10 +13,10 @@ namespace Memphis.API.Controllers;
 public class HoursController : ControllerBase
 {
     private readonly DatabaseContext _context;
-    private readonly IHub _sentryHub;
+    private readonly ISentryClient _sentryHub;
     private readonly ILogger<HoursController> _logger;
 
-    public HoursController(DatabaseContext context, IHub sentryHub, ILogger<HoursController> logger)
+    public HoursController(DatabaseContext context, ISentryClient sentryHub, ILogger<HoursController> logger)
     {
         _context = context;
         _sentryHub = sentryHub;
@@ -42,20 +40,7 @@ public class HoursController : ControllerBase
             var result = new List<HoursDto>();
             foreach (var entry in hours)
             {
-                var userEntry = new RosterUserDto
-                {
-                    Cid = entry.User.Id,
-                    Name = $"{entry.User.FirstName} {entry.User.LastName}",
-                    Initials = entry.User.Initials,
-                    Rating = Helpers.GetRatingName(entry.User.Rating),
-                    Status = entry.User.Status,
-                    Visitor = entry.User.Visitor,
-                    VisitorFrom = entry.User.VisitorFrom,
-                    Minor = entry.User.Minor,
-                    Major = entry.User.Major,
-                    Center = entry.User.Center,
-                    Roles = entry.User.Roles?.ToList() ?? new List<Role>()
-                };
+                var userEntry = RosterUserDto.Parse(entry.User);
                 result.Add(new HoursDto
                 {
                     Month = entry.Month,
@@ -76,20 +61,7 @@ public class HoursController : ControllerBase
 
             foreach (var entry in usersNoHours)
             {
-                var userEntry = new RosterUserDto
-                {
-                    Cid = entry.Id,
-                    Name = $"{entry.FirstName} {entry.LastName}",
-                    Initials = entry.Initials,
-                    Rating = Helpers.GetRatingName(entry.Rating),
-                    Status = entry.Status,
-                    Visitor = entry.Visitor,
-                    VisitorFrom = entry.VisitorFrom,
-                    Minor = entry.Minor,
-                    Major = entry.Major,
-                    Center = entry.Center,
-                    Roles = entry.Roles?.ToList() ?? new List<Role>()
-                };
+                var userEntry = RosterUserDto.Parse(entry);
                 result.Add(new HoursDto
                 {
                     Month = month ?? 0,
@@ -137,20 +109,7 @@ public class HoursController : ControllerBase
 
             var result = new List<HoursDto>();
             var now = DateTimeOffset.UtcNow;
-            var userEntry = new RosterUserDto
-            {
-                Cid = user.Id,
-                Name = $"{user.FirstName} {user.LastName}",
-                Initials = user.Initials,
-                Rating = Helpers.GetRatingName(user.Rating),
-                Status = user.Status,
-                Visitor = user.Visitor,
-                VisitorFrom = user.VisitorFrom,
-                Minor = user.Minor,
-                Major = user.Major,
-                Center = user.Center,
-                Roles = user.Roles?.ToList() ?? new List<Role>()
-            };
+            var userEntry = RosterUserDto.Parse(user);
             for (var i = 0; i < 12; i++)
             {
                 var hours = await _context.Hours.Include(x => x.User).Include(x => x.User.Roles)

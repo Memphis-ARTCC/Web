@@ -2,13 +2,13 @@
 using Memphis.API.Extensions;
 using Memphis.API.Services;
 using Memphis.Shared.Dtos.auth;
+using Memphis.Shared.Dtos.Auth;
 using Memphis.Shared.Enums;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
-using Sentry;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -22,17 +22,17 @@ public class AuthController : ControllerBase
 {
     private readonly DatabaseContext _context;
     private readonly RedisService _redisService;
-    private readonly IHub _sentryHub;
+    private readonly ISentryClient _sentryHub;
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(DatabaseContext context, RedisService redisService, IHub sentryHub,
-        ILogger<AuthController> logger)
+    public AuthController(DatabaseContext context, RedisService redisService, ISentryClient sentryHub, ILogger<AuthController> logger)
     {
         _context = context;
         _redisService = redisService;
         _sentryHub = sentryHub;
         _logger = logger;
     }
+
 
     [HttpGet("redirect")]
     [ProducesResponseType(301)]
@@ -58,10 +58,10 @@ public class AuthController : ControllerBase
         }
     }
 
-    [HttpGet("callback")]
-    [ProducesResponseType(301)]
+    [HttpPost("callback")]
+    [ProducesResponseType(typeof(Response<string>), 200)]
     [ProducesResponseType(typeof(Response<Guid>), 500)]
-    public async Task<IActionResult> ProcessCallback(string code)
+    public async Task<ActionResult<Response<string>>> ProcessCallback(CodeDto payload)
     {
         try
         {
@@ -73,8 +73,6 @@ public class AuthController : ControllerBase
                                throw new ArgumentNullException("CONNECT_CLIENT_SECRET env variable not found");
             var redirectUrl = Environment.GetEnvironmentVariable("CONNECT_REDIRECT_URL") ??
                               throw new ArgumentNullException("CONNECT_REDIRECT_URL env variable not found");
-            var uiRedirect = Environment.GetEnvironmentVariable("CONNEXT_REDIRECT_URL_UI") ??
-                             throw new ArgumentNullException("CONNEXT_REDIRECT_URL_UI env variable not found");
             var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ??
                          throw new ArgumentNullException("JWT_ISSUER env variable not found");
             var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ??
@@ -89,7 +87,7 @@ public class AuthController : ControllerBase
             {
                 ["client_id"] = clientId,
                 ["client_secret"] = clientSecret,
-                ["code"] = code,
+                ["code"] = payload.Code,
                 ["grant_type"] = "authorization_code",
                 ["redirect_uri"] = redirectUrl
             });
@@ -148,7 +146,12 @@ public class AuthController : ControllerBase
                     )
                 );
                 var accessTokenNone = new JwtSecurityTokenHandler().WriteToken(jwtNone);
-                return RedirectPreserveMethod($"{uiRedirect}?accessToken={accessTokenNone}");
+                return Ok(new Response<string>
+                {
+                    StatusCode = 200,
+                    Message = "Logged in",
+                    Data = accessTokenNone
+                });
             }
 
             claims.Add(new Claim("isMember", $"{true}"));
@@ -175,7 +178,12 @@ public class AuthController : ControllerBase
                 )
             );
             var accessToken = new JwtSecurityTokenHandler().WriteToken(jwt);
-            return RedirectPreserveMethod($"{uiRedirect}?accessToken={accessToken}");
+            return Ok(new Response<string>
+            {
+                StatusCode = 200,
+                Message = "Logged in",
+                Data = accessToken
+            });
         }
         catch (Exception ex)
         {

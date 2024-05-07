@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 
 namespace Memphis.API.Controllers;
@@ -24,11 +23,11 @@ public class CommentsController : ControllerBase
     private readonly RedisService _redisService;
     private readonly LoggingService _loggingService;
     private readonly IValidator<CommentDto> _validator;
-    private readonly IHub _sentryHub;
-    private readonly ILogger<AirportsController> _logger;
+    private readonly ISentryClient _sentryHub;
+    private readonly ILogger<CommentsController> _logger;
 
     public CommentsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<CommentDto> validator, IHub sentryHub, ILogger<AirportsController> logger)
+        IValidator<CommentDto> validator, ISentryClient sentryHub, ILogger<CommentsController> logger)
     {
         _context = context;
         _redisService = redisService;
@@ -40,25 +39,28 @@ public class CommentsController : ControllerBase
 
     [HttpPost]
     [Authorize(Roles = Constants.CanComment)]
-    [ProducesResponseType(typeof(Response<Comment>), 200)]
+    [ProducesResponseType(typeof(Response<Comment>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<int>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Comment>>> CreateComment(CommentDto data)
+    public async Task<ActionResult<Response<Comment>>> CreateComment(CommentDto payload)
     {
         try
         {
             if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentList))
+            {
                 return StatusCode(401);
+            }
 
             // Check if they can add a confidential comment
-            if (data.Confidential &&
-                !await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentConfidentialList))
+            if (payload.Confidential && !await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentConfidentialList))
+            {
                 return StatusCode(401);
+            }
 
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -69,14 +71,14 @@ public class CommentsController : ControllerBase
                 });
             }
 
-            var user = await _context.Users.FindAsync(data.UserId);
+            var user = await _context.Users.FindAsync(payload.UserId);
             if (user == null)
             {
                 return NotFound(new Response<int>
                 {
                     StatusCode = 404,
-                    Message = $"User '{data.UserId}' not found",
-                    Data = data.UserId
+                    Message = $"User '{payload.UserId}' not found",
+                    Data = payload.UserId
                 });
             }
 
@@ -95,19 +97,18 @@ public class CommentsController : ControllerBase
             {
                 User = user,
                 Submitter = submitter,
-                Confidential = data.Confidential,
-                Title = data.Title,
-                Description = data.Description,
+                Confidential = payload.Confidential,
+                Title = payload.Title,
+                Description = payload.Description,
             });
             await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);
 
-            await _loggingService.AddWebsiteLog(Request, $"Created comment '{result.Entity.Id}'", string.Empty,
-                newData);
+            await _loggingService.AddWebsiteLog(Request, $"Created comment '{result.Entity.Id}'", string.Empty, newData);
 
-            return Ok(new Response<Comment>
+            return StatusCode(201, new Response<Comment>
             {
-                StatusCode = 200,
+                StatusCode = 201,
                 Message = $"Created comment '{result.Entity.Id}'",
                 Data = result.Entity
             });
@@ -122,6 +123,7 @@ public class CommentsController : ControllerBase
     [HttpGet("{userId:int}")]
     [Authorize(Roles = $"{Constants.CanComment},{Constants.CanCommentConfidential}")]
     [ProducesResponseType(typeof(ResponsePaging<IList<Comment>>), 200)]
+    [ProducesResponseType(typeof(Response<string?>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<int>), 404)]
@@ -130,6 +132,24 @@ public class CommentsController : ControllerBase
     {
         try
         {
+            if (page < 1)
+            {
+                return BadRequest(new Response<string>
+                {
+                    StatusCode = 400,
+                    Message = "Invalid page"
+                });
+            }
+
+            if (size < 1)
+            {
+                return BadRequest(new Response<string>
+                {
+                    StatusCode = 400,
+                    Message = "Invalid size"
+                });
+            }
+
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
             {
@@ -159,7 +179,8 @@ public class CommentsController : ControllerBase
                     Data = confidentialResult
                 });
             }
-            else if (await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentList))
+
+            if (await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentList))
             {
                 var result = await _context.Comments
                     .Where(x => x.User == user)
@@ -202,7 +223,9 @@ public class CommentsController : ControllerBase
         try
         {
             if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList))
+            {
                 return StatusCode(401);
+            }
 
             var comment = await _context.Comments.FindAsync(commentId);
             if (comment == null)

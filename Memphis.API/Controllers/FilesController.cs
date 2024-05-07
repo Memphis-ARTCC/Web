@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 using File = Memphis.Shared.Models.File;
 
@@ -26,37 +25,39 @@ public class FilesController : ControllerBase
     private readonly S3Service _s3Service;
     private readonly LoggingService _loggingService;
     private readonly IValidator<FileDto> _validator;
-    private readonly IHub _sentryHub;
+    private readonly ISentryClient _sentryHub;
     private readonly ILogger<FilesController> _logger;
 
-    public FilesController(DatabaseContext context, RedisService redisService, S3Service s3Service,
-        LoggingService loggingService, IValidator<FileDto> validator, IHub sentryHub, ILogger<FilesController> logger)
+    public FilesController(DatabaseContext context, RedisService redisService, S3Service s3Service, LoggingService loggingService,
+        IValidator<FileDto> validator, ISentryClient sentryHub, ILogger<FilesController> logger)
     {
         _context = context;
         _redisService = redisService;
+        _s3Service = s3Service;
         _loggingService = loggingService;
         _validator = validator;
         _sentryHub = sentryHub;
         _logger = logger;
-        _s3Service = s3Service;
     }
 
     [HttpPost]
     [Authorize(Roles = Constants.CanFiles)]
-    [ProducesResponseType(typeof(Response<File>), 200)]
+    [ProducesResponseType(typeof(Response<File>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<File>>> CreateFile(FileDto data)
+    public async Task<ActionResult<Response<File>>> CreateFile(FileDto payload)
     {
         try
         {
             if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFilesList))
+            {
                 return StatusCode(401);
+            }
 
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -89,18 +90,18 @@ public class FilesController : ControllerBase
             var fileUrl = await _s3Service.UploadFile(Request, "files");
             var result = await _context.Files.AddAsync(new File
             {
-                Title = data.Title,
-                Description = data.Description,
-                Version = data.Version,
+                Title = payload.Title,
+                Description = payload.Description,
+                Version = payload.Version,
                 FileUrl = fileUrl,
-                Type = data.Type
+                Type = payload.Type
             });
             var newData = JsonConvert.SerializeObject(result.Entity);
             await _loggingService.AddWebsiteLog(Request, $"Created file '{result.Entity.Id}'", string.Empty, newData);
 
-            return Ok(new Response<File>
+            return StatusCode(201, new Response<File>
             {
-                StatusCode = 200,
+                StatusCode = 201,
                 Message = $"Created file '{result.Entity.Id}'",
                 Data = result.Entity
             });
@@ -121,10 +122,8 @@ public class FilesController : ControllerBase
         try
         {
             var isStaff = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList);
-            var isSeniorStaff =
-                await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList);
-            var isTrainingStaff =
-                await _redisService.ValidateRoles(Request.HttpContext.User, Constants.TrainingStaffList);
+            var isSeniorStaff = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList);
+            var isTrainingStaff = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.TrainingStaffList);
             var resultQuery = _context.Files.AsQueryable();
             if (!isStaff)
             {
@@ -190,7 +189,7 @@ public class FilesController : ControllerBase
         }
     }
 
-    [HttpPut("{fileId:int}")]
+    [HttpPut]
     [Authorize(Roles = Constants.CanFiles)]
     [ProducesResponseType(typeof(Response<File>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
@@ -198,14 +197,16 @@ public class FilesController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<File>>> UpdateFile(int fileId, FileDto data)
+    public async Task<ActionResult<Response<File>>> UpdateFile(FileDto payload)
     {
         try
         {
             if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFilesList))
+            {
                 return StatusCode(401);
+            }
 
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -216,13 +217,13 @@ public class FilesController : ControllerBase
                 });
             }
 
-            var file = await _context.Files.FindAsync(fileId);
+            var file = await _context.Files.FindAsync(payload.Id);
             if (file == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"File '{fileId}' not found"
+                    Message = $"File '{payload.Id}' not found"
                 });
             }
 
@@ -241,19 +242,19 @@ public class FilesController : ControllerBase
                 }
             }
 
-            file.Title = data.Title;
-            file.Description = data.Description;
-            file.Version = data.Version;
-            file.Type = data.Type;
+            file.Title = payload.Title;
+            file.Description = payload.Description;
+            file.Version = payload.Version;
+            file.Type = payload.Type;
             await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(file);
 
-            await _loggingService.AddWebsiteLog(Request, $"Updated file '{fileId}'", oldData, newData);
+            await _loggingService.AddWebsiteLog(Request, $"Updated file '{file.Id}'", oldData, newData);
 
             return Ok(new Response<File>
             {
                 StatusCode = 200,
-                Message = $"Updated file '{fileId}'",
+                Message = $"Updated file '{file.Id}'",
                 Data = file
             });
         }

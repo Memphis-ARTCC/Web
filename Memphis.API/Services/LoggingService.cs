@@ -14,8 +14,9 @@ public class LoggingService
 
     public async Task AddWebsiteLog(HttpRequest request, string action, string oldData, string newData)
     {
-        var ip = request.Headers["CF-Connecting-IP"].ToString() ??
-                 request.HttpContext.Connection?.RemoteIpAddress?.ToString() ?? "Not Found";
+        var ip = request.Headers["CF-Connecting-IP"].ToString() == string.Empty
+            ? "Not Found"
+            : request.Headers["CF-Connecting-IP"].ToString();
         var cid = request.HttpContext.User.Claims.FirstOrDefault(x => x.Type == "cid")?.Value ?? "Not Found";
         var name = request.HttpContext.User.Claims.FirstOrDefault(x => x.Type == "fullName")?.Value ?? "Not Found";
         await _context.WebsiteLogs.AddAsync(new WebsiteLog

@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Sentry;
 using Constants = Memphis.Shared.Utils.Constants;
 
 namespace Memphis.API.Controllers;
@@ -25,11 +24,11 @@ public class FeedbackController : ControllerBase
     private readonly RedisService _redisService;
     private readonly LoggingService _loggingService;
     private readonly IValidator<FeedbackDto> _validator;
-    private readonly IHub _sentryHub;
+    private readonly ISentryClient _sentryHub;
     private readonly ILogger<FeedbackController> _logger;
 
     public FeedbackController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<FeedbackDto> validator, IHub sentryHub, ILogger<FeedbackController> logger)
+        IValidator<FeedbackDto> validator, ISentryClient sentryHub, ILogger<FeedbackController> logger)
     {
         _context = context;
         _redisService = redisService;
@@ -41,17 +40,17 @@ public class FeedbackController : ControllerBase
 
     [HttpPost]
     [Authorize]
-    [ProducesResponseType(typeof(Response<Feedback>), 200)]
+    [ProducesResponseType(typeof(Response<Feedback>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Feedback>>> CreateFeedback(FeedbackDto data)
+    public async Task<ActionResult<Response<Feedback>>> CreateFeedback(FeedbackDto payload)
     {
         try
         {
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -62,13 +61,13 @@ public class FeedbackController : ControllerBase
                 });
             }
 
-            var controller = await _context.Users.FindAsync(data.ControllerId);
+            var controller = await _context.Users.FindAsync(payload.ControllerId);
             if (controller == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"User '{data.ControllerId}' not found"
+                    Message = $"User '{payload.ControllerId}' not found"
                 });
             }
 
@@ -78,19 +77,18 @@ public class FeedbackController : ControllerBase
                 Name = Request.HttpContext.GetName() ?? string.Empty,
                 Email = Request.HttpContext.GetEmail() ?? string.Empty,
                 Controller = controller,
-                ControllerCallsign = data.ControllerCallsign,
-                Description = data.Description,
-                Level = data.Level
+                ControllerCallsign = payload.ControllerCallsign,
+                Description = payload.Description,
+                Level = payload.Level
             });
             await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);
 
-            await _loggingService.AddWebsiteLog(Request, $"Created feedback '{result.Entity.Id}'", string.Empty,
-                newData);
+            await _loggingService.AddWebsiteLog(Request, $"Created feedback '{result.Entity.Id}'", string.Empty, newData);
 
-            return Ok(new Response<Feedback>
+            return StatusCode(201, new Response<Feedback>
             {
-                StatusCode = 200,
+                StatusCode = 201,
                 Message = $"Created feedback '{result.Entity.Id}'",
                 Data = result.Entity
             });
@@ -115,7 +113,9 @@ public class FeedbackController : ControllerBase
         try
         {
             if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
+            {
                 return StatusCode(401);
+            }
 
             var result = await _context.Feedback.OrderBy(x => x.Created)
                 .Where(x => x.Status == status).Skip((page - 1) * size).Take(size).ToListAsync();
@@ -146,7 +146,9 @@ public class FeedbackController : ControllerBase
         try
         {
             if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
+            {
                 return StatusCode(401);
+            }
 
             var result = await _context.Feedback.FindAsync(feedbackId);
             if (result == null)
@@ -215,7 +217,7 @@ public class FeedbackController : ControllerBase
         }
     }
 
-    [HttpPut("{feedbackId:int}")]
+    [HttpPut]
     [Authorize(Roles = Constants.CanFeedback)]
     [ProducesResponseType(typeof(Response<Feedback>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
@@ -223,14 +225,16 @@ public class FeedbackController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Feedback>>> UpdateFeedback(int feedbackId, FeedbackDto data)
+    public async Task<ActionResult<Response<Feedback>>> UpdateFeedback(FeedbackDto payload)
     {
         try
         {
             if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
+            {
                 return StatusCode(401);
+            }
 
-            var validation = await _validator.ValidateAsync(data);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -241,19 +245,19 @@ public class FeedbackController : ControllerBase
                 });
             }
 
-            var feedback = await _context.Feedback.FindAsync(feedbackId);
+            var feedback = await _context.Feedback.FindAsync(payload.Id);
             if (feedback == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"Feedback '{feedbackId}' not found"
+                    Message = $"Feedback '{payload.Id}' not found"
                 });
             }
 
             var oldData = JsonConvert.SerializeObject(feedback);
-            feedback.Reply = data.Reply;
-            feedback.Status = data.Status;
+            feedback.Reply = payload.Reply;
+            feedback.Status = payload.Status;
             feedback.Updated = DateTimeOffset.UtcNow;
             await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(feedback);
@@ -289,7 +293,9 @@ public class FeedbackController : ControllerBase
         try
         {
             if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
+            {
                 return StatusCode(401);
+            }
 
             var result = await _context.Feedback.FindAsync(feedbackId);
             if (result == null)
