@@ -1,8 +1,8 @@
 ﻿using FluentValidation;
 using FluentValidation.Results;
-using Memphis.API.Data;
 using Memphis.API.Extensions;
 using Memphis.API.Services;
+using Memphis.Shared.Data;
 using Memphis.Shared.Dtos;
 using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
@@ -54,7 +54,7 @@ public class AirportsController : ControllerBase
                 return StatusCode(401);
             }
 
-            ValidationResult validation = await _validator.ValidateAsync(payload);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -65,7 +65,7 @@ public class AirportsController : ControllerBase
                 });
             }
 
-            Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<Airport> result = await _context.Airports.AddAsync(new Airport
+            var result = await _context.Airports.AddAsync(new Airport
             {
                 Name = payload.Name,
                 Icao = payload.Icao,
@@ -95,7 +95,7 @@ public class AirportsController : ControllerBase
     {
         try
         {
-            List<Airport> result = await _context.Airports.ToListAsync();
+            var result = await _context.Airports.ToListAsync();
             return Ok(new Response<IList<Airport>>
             {
                 StatusCode = 200,

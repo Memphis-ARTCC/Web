@@ -1,6 +1,6 @@
-﻿using Memphis.API.Data;
-using Memphis.API.Extensions;
+﻿using Memphis.API.Extensions;
 using Memphis.API.Services;
+using Memphis.Shared.Data;
 using Memphis.Shared.Dtos.auth;
 using Memphis.Shared.Dtos.Auth;
 using Memphis.Shared.Enums;

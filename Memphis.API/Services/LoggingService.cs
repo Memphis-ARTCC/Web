@@ -1,4 +1,4 @@
-﻿using Memphis.API.Data;
+﻿using Memphis.Shared.Data;
 using Memphis.Shared.Models;
 
 namespace Memphis.API.Services;
