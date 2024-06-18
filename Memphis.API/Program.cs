@@ -1,8 +1,8 @@
 using dotenv.net;
 using FluentValidation;
-using Memphis.API.Data;
 using Memphis.API.Services;
 using Memphis.API.Validators;
+using Memphis.Shared.Data;
 using Memphis.Shared.Dtos;
 using Memphis.Shared.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -104,6 +104,7 @@ builder.Services.AddScoped<IValidator<CommentDto>, CommentValidator>();
 builder.Services.AddScoped<IValidator<EventPositionDto>, EventPositionValidator>();
 builder.Services.AddScoped<IValidator<EventRegistrationDto>, EventRegistrationValidator>();
 builder.Services.AddScoped<IValidator<EventDto>, EventValidator>();
+builder.Services.AddScoped<IValidator<Facility>, FacilityValidator>();
 builder.Services.AddScoped<IValidator<FaqDto>, FaqValidator>();
 builder.Services.AddScoped<IValidator<FeedbackDto>, FeedbackValidator>();
 builder.Services.AddScoped<IValidator<FileDto>, FileValidator>();

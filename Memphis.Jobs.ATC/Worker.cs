@@ -1,0 +1,258 @@
+using Discord;
+using Discord.Webhook;
+using Memphis.Shared.Data;
+using Memphis.Shared.Datafeed;
+using Memphis.Shared.Models;
+using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
+using StackExchange.Redis;
+
+namespace Memphis.Jobs.ATC
+{
+    public class Worker : BackgroundService
+    {
+        private readonly DatabaseContext _context;
+        private readonly IDatabase _redis;
+        private readonly DiscordWebhookClient _onlineWebhook;
+        private readonly DiscordWebhookClient _staffWebhook;
+        private readonly ILogger<Worker> _logger;
+
+        public Worker(DatabaseContext context, IDatabase redis, ILogger<Worker> logger)
+        {
+            _context = context;
+            _redis = redis;
+            _onlineWebhook = new DiscordWebhookClient(Environment.GetEnvironmentVariable("ONLINE_DISCORD_WEBHOOK") ??
+                throw new ArgumentNullException("ONLINE_DISCORD_WEBHOOK env variable not found"));
+            _staffWebhook = new DiscordWebhookClient(Environment.GetEnvironmentVariable("STAFF_DISCORD_WEBHOOK") ??
+                throw new ArgumentNullException("STAFF_DISCORD_WEBHOOK env variable not found"));
+            _logger = logger;
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            // Wait 1 second before starting
+            await Task.Delay(1000, stoppingToken);
+
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("ATC job running at: {time}", DateTimeOffset.UtcNow);
+
+                var added = 0;
+                var updated = 0;
+                var removed = 0;
+
+                var redisDatafeed = await _redis.StringGetAsync("datafeed");
+                if (!redisDatafeed.HasValue)
+                {
+                    _logger.LogError("Failed to fetch datafeed data");
+                    await Task.Delay(int.Parse(Environment.GetEnvironmentVariable("DELAY") ?? "10000"), stoppingToken);
+                    continue;
+                }
+                var datafeed = JsonConvert.DeserializeObject<Shared.Datafeed.Datafeed>(redisDatafeed!);
+                if (datafeed is null)
+                {
+                    _logger.LogError("Failed to deserialize datafeed data");
+                    await Task.Delay(int.Parse(Environment.GetEnvironmentVariable("DELAY") ?? "10000"), stoppingToken);
+                    continue;
+                }
+
+                var facilityIdentifiers = await _context.Facilities.Select(x => x.Identifier).ToListAsync();
+                var memphisAtc = new List<Controller>();
+                foreach (var entry in facilityIdentifiers)
+                {
+                    memphisAtc.AddRange(datafeed.Controllers.Where(x => x.Callsign.StartsWith(entry)));
+                }
+
+                // Handle updating existing sessions and adding new ones
+                foreach (var entry in memphisAtc)
+                {
+                    var existingSession = await _context.Sessions.Include(x => x.User)
+                        .Where(x => x.User.Id == entry.Cid)
+                        .Where(x => x.Callsign == entry.Callsign)
+                        .Where(x => x.Frequency == entry.Frequency)
+                        .Where(x => x.Start == entry.LogonTime)
+                        .Where(x => x.Duration == TimeSpan.Zero)
+                        .FirstOrDefaultAsync();
+                    if (existingSession == null)
+                    {
+                        var user = await _context.Users.FindAsync(entry.Cid);
+                        if (user == null)
+                        {
+                            _logger.LogError("Failed to find user {UserId}", entry.Cid);
+                            var embedNotFound = new EmbedBuilder
+                            {
+                                Title = $"{entry.Callsign} is online but not on roster!",
+                                Fields =
+                                {
+                                    new EmbedFieldBuilder
+                                    {
+                                        Name = "Name",
+                                        Value = entry.Name,
+                                        IsInline = true
+                                    },
+                                    new EmbedFieldBuilder
+                                    {
+                                        Name = "Cid",
+                                        Value = entry.Cid,
+                                        IsInline = true
+                                    }
+                                },
+                                Color = Color.Red,
+                                Timestamp = DateTimeOffset.UtcNow
+                            };
+                            await _staffWebhook.SendMessageAsync("", false, [embedNotFound.Build()]);
+                            continue;
+                        }
+
+                        await _context.Sessions.AddAsync(new Session
+                        {
+                            User = user,
+                            Name = entry.Name,
+                            Callsign = entry.Callsign,
+                            Frequency = entry.Frequency,
+                            Start = entry.LogonTime,
+                            End = DateTimeOffset.UtcNow
+                        });
+                        var embed = new EmbedBuilder
+                        {
+                            Title = $"{entry.Callsign} is online!",
+                            Fields =
+                            {
+                                new EmbedFieldBuilder
+                                {
+                                    Name = "Name",
+                                    Value = entry.Name,
+                                    IsInline = true
+                                },
+                                new EmbedFieldBuilder
+                                {
+                                    Name = "Cid",
+                                    Value = entry.Cid,
+                                    IsInline = true
+                                },
+                                new EmbedFieldBuilder
+                                {
+                                    Name = "Frequency",
+                                    Value = entry.Frequency,
+                                    IsInline = true
+                                }
+                            },
+                            Color = Color.Green,
+                            Timestamp = DateTimeOffset.UtcNow
+                        };
+                        await _onlineWebhook.SendMessageAsync("", false, [embed.Build()]);
+                        added++;
+                    }
+                    else
+                    {
+                        existingSession.End = DateTimeOffset.UtcNow;
+                        updated++;
+                    }
+                    await _context.SaveChangesAsync();
+                }
+
+                // Handle any sessions to remove
+                var onlineAtc = await _context.Sessions.Include(x => x.User).Where(x => x.Duration == TimeSpan.Zero).ToListAsync();
+                foreach (var entry in onlineAtc)
+                {
+                    if (!memphisAtc.Any(x => x.Callsign == entry.Callsign && x.Cid == entry.User.Id &&
+                        x.LogonTime == entry.Start && x.Frequency == entry.Frequency))
+                    {
+                        if ((DateTimeOffset.UtcNow - entry.End).TotalSeconds < 45)
+                        {
+                            // Only end a session if it has been offline for 45 seconds (3 datafeed refreshes)
+                            continue;
+                        }
+
+                        entry.Duration = entry.End - entry.Start;
+                        _context.Sessions.Update(entry);
+
+                        if (!await _context.Hours.AnyAsync(x => x.User == entry.User && x.Year == DateTime.UtcNow.Year && x.Month == DateTime.UtcNow.Month))
+                        {
+                            await _context.Hours.AddAsync(new Hours
+                            {
+                                User = entry.User,
+                                Year = DateTime.UtcNow.Year,
+                                Month = DateTime.UtcNow.Month,
+                                DeliveryHours = 0,
+                                GroundHours = 0,
+                                TowerHours = 0,
+                                ApproachHours = 0,
+                                CenterHours = 0
+                            });
+                            await _context.SaveChangesAsync();
+                        }
+                        var hours = await _context.Hours
+                            .Where(x => x.User == entry.User)
+                            .Where(x => x.Year == DateTime.UtcNow.Year)
+                            .Where(x => x.Year == DateTime.UtcNow.Year)
+                            .FirstOrDefaultAsync();
+                        if (hours == null)
+                        {
+                            _logger.LogError("Failed to find hours for user {UserId}", entry.User.Id);
+                            continue;
+                        }
+
+                        if (entry.Callsign.EndsWith("DEL"))
+                        {
+                            hours.DeliveryHours += entry.Duration.TotalHours;
+                        }
+                        else if (entry.Callsign.EndsWith("GND"))
+                        {
+                            hours.GroundHours += entry.Duration.TotalHours;
+                        }
+                        else if (entry.Callsign.EndsWith("TWR"))
+                        {
+                            hours.TowerHours += entry.Duration.TotalHours;
+                        }
+                        else if (entry.Callsign.EndsWith("APP") || entry.Callsign.EndsWith("DEP"))
+                        {
+                            hours.ApproachHours += entry.Duration.TotalHours;
+                        }
+                        else if (entry.Callsign.EndsWith("CTR"))
+                        {
+                            hours.CenterHours += entry.Duration.TotalHours;
+                        }
+                        await _context.SaveChangesAsync();
+                        removed++;
+                        var embed = new EmbedBuilder
+                        {
+                            Title = $"{entry.Callsign} is offline!",
+                            Fields =
+                            {
+                                new EmbedFieldBuilder
+                                {
+                                    Name = "Name",
+                                    Value = entry.Name,
+                                    IsInline = true,
+                                },
+                                new EmbedFieldBuilder
+                                {
+                                    Name = "Cid",
+                                    Value = entry.User.Id,
+                                    IsInline = true
+                                },
+                                new EmbedFieldBuilder
+                                {
+                                    Name = "Duration",
+                                    Value = $"{Math.Round(entry.Duration.TotalHours, 2)} hours",
+                                    IsInline = true
+                                }
+                            },
+                            Color = Color.Red,
+                            Timestamp = DateTimeOffset.UtcNow
+                        };
+                        await _onlineWebhook.SendMessageAsync("", false, [embed.Build()]);
+                    }
+                }
+
+                _logger.LogInformation("Added {added} sessions", added);
+                _logger.LogInformation("Updated {updated} sessions", updated);
+                _logger.LogInformation("Removed {removed} sessions", removed);
+                _logger.LogInformation("ATC job completed at: {time}", DateTimeOffset.UtcNow);
+                var delay = int.Parse(Environment.GetEnvironmentVariable("DELAY") ?? "10000");
+                await Task.Delay(delay, stoppingToken);
+            }
+        }
+    }
+}

@@ -13,3 +13,9 @@ jobs:
     - name: Build api image
       run: |
         docker build -t api -f Memphis.API/Dockerfile .
+        docker build -t airports-job -f Memphis.Jobs.Airports/Dockerfile .
+        docker build -t atc-job -f Memphis.Jobs.ATC/Dockerfile .
+        docker build -t datafeed-job -f Memphis.Jobs.Datafeed/Dockerfile .
+        docker build -t events-job -f Memphis.Jobs.Events/Dockerfile .
+        docker build -t roster-job -f Memphis.Jobs.Roster/Dockerfile .
+        docker build -t solocerts-job -f Memphis.Jobs.SoloCerts/Dockerfile .

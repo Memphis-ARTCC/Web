@@ -1,5 +1,5 @@
-﻿using Memphis.API.Data;
-using Memphis.API.Extensions;
+﻿using Memphis.API.Extensions;
+using Memphis.Shared.Data;
 using Memphis.Shared.Dtos;
 using Memphis.Shared.Enums;
 using Memphis.Shared.Models;

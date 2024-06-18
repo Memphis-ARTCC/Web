@@ -1,0 +1,88 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.6.33815.320
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8CF65A81-01A0-4374-A576-E37AD5E740BE}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		.github\workflows\build-push.yml = .github\workflows\build-push.yml
+		.github\workflows\build.yml = .github\workflows\build.yml
+		.github\workflows\create-tag.yaml = .github\workflows\create-tag.yaml
+		docker-compose.yaml = docker-compose.yaml
+		LICENSE.txt = LICENSE.txt
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Memphis.API", "Memphis.API\Memphis.API.csproj", "{24C3E30E-A955-4CA4-92B7-2B9E1FB81701}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Memphis.Shared", "Memphis.Shared\Memphis.Shared.csproj", "{3DEC6E30-E458-4509-8A4B-A7F2857E41E6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Jobs", "Jobs", "{DB13A980-7287-43B0-AA3D-C805D96F0735}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Memphis.Jobs.Datafeed", "Memphis.Jobs.Datafeed\Memphis.Jobs.Datafeed.csproj", "{6DB70010-EDB6-4D8D-A82A-A32F19EE4E39}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Memphis.Jobs.Roster", "Memphis.Jobs.Roster\Memphis.Jobs.Roster.csproj", "{7EAFA6A9-E876-4D13-A169-613428291837}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Memphis.Jobs.ATC", "Memphis.Jobs.ATC\Memphis.Jobs.ATC.csproj", "{8FE1A491-0D3E-4963-965B-6F76C15DBAE5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Memphis.Jobs.Airports", "Memphis.Jobs.Airports\Memphis.Jobs.Airports.csproj", "{6A4AA269-F12E-48F5-B245-5201D708870B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Memphis.Jobs.Events", "Memphis.Jobs.Events\Memphis.Jobs.Events.csproj", "{E1CD8AD2-06B9-4FA6-9663-C450911CE312}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Memphis.Jobs.SoloCerts", "Memphis.Jobs.SoloCerts\Memphis.Jobs.SoloCerts.csproj", "{FD49F759-184C-45E1-BEC7-3E4D2DFC3039}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{24C3E30E-A955-4CA4-92B7-2B9E1FB81701}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{24C3E30E-A955-4CA4-92B7-2B9E1FB81701}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{24C3E30E-A955-4CA4-92B7-2B9E1FB81701}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{24C3E30E-A955-4CA4-92B7-2B9E1FB81701}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3DEC6E30-E458-4509-8A4B-A7F2857E41E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3DEC6E30-E458-4509-8A4B-A7F2857E41E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3DEC6E30-E458-4509-8A4B-A7F2857E41E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3DEC6E30-E458-4509-8A4B-A7F2857E41E6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6DB70010-EDB6-4D8D-A82A-A32F19EE4E39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6DB70010-EDB6-4D8D-A82A-A32F19EE4E39}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6DB70010-EDB6-4D8D-A82A-A32F19EE4E39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6DB70010-EDB6-4D8D-A82A-A32F19EE4E39}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7EAFA6A9-E876-4D13-A169-613428291837}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7EAFA6A9-E876-4D13-A169-613428291837}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7EAFA6A9-E876-4D13-A169-613428291837}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7EAFA6A9-E876-4D13-A169-613428291837}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8FE1A491-0D3E-4963-965B-6F76C15DBAE5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8FE1A491-0D3E-4963-965B-6F76C15DBAE5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8FE1A491-0D3E-4963-965B-6F76C15DBAE5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8FE1A491-0D3E-4963-965B-6F76C15DBAE5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6A4AA269-F12E-48F5-B245-5201D708870B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6A4AA269-F12E-48F5-B245-5201D708870B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6A4AA269-F12E-48F5-B245-5201D708870B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6A4AA269-F12E-48F5-B245-5201D708870B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E1CD8AD2-06B9-4FA6-9663-C450911CE312}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E1CD8AD2-06B9-4FA6-9663-C450911CE312}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E1CD8AD2-06B9-4FA6-9663-C450911CE312}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E1CD8AD2-06B9-4FA6-9663-C450911CE312}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FD49F759-184C-45E1-BEC7-3E4D2DFC3039}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD49F759-184C-45E1-BEC7-3E4D2DFC3039}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD49F759-184C-45E1-BEC7-3E4D2DFC3039}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD49F759-184C-45E1-BEC7-3E4D2DFC3039}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{6DB70010-EDB6-4D8D-A82A-A32F19EE4E39} = {DB13A980-7287-43B0-AA3D-C805D96F0735}
+		{7EAFA6A9-E876-4D13-A169-613428291837} = {DB13A980-7287-43B0-AA3D-C805D96F0735}
+		{8FE1A491-0D3E-4963-965B-6F76C15DBAE5} = {DB13A980-7287-43B0-AA3D-C805D96F0735}
+		{6A4AA269-F12E-48F5-B245-5201D708870B} = {DB13A980-7287-43B0-AA3D-C805D96F0735}
+		{E1CD8AD2-06B9-4FA6-9663-C450911CE312} = {DB13A980-7287-43B0-AA3D-C805D96F0735}
+		{FD49F759-184C-45E1-BEC7-3E4D2DFC3039} = {DB13A980-7287-43B0-AA3D-C805D96F0735}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C4AE31B6-F2A4-48C3-9AE6-E766F8EDBD1F}
+	EndGlobalSection
+EndGlobal
