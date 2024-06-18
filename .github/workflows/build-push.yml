@@ -47,17 +47,17 @@ jobs:
         docker tag api ghcr.io/memphis-artcc/solocerts-job:${{ env.RELEASE_VERSION }}
     - name: Push images
       run: |
-        docker push api ghcr.io/memphis-artcc/api:latest
-        docker push api ghcr.io/memphis-artcc/api:${{ env.RELEASE_VERSION }}
-        docker push api ghcr.io/memphis-artcc/airports-job:latest
-        docker push api ghcr.io/memphis-artcc/airports-job:${{ env.RELEASE_VERSION }}
-        docker push api ghcr.io/memphis-artcc/atc-job:latest
-        docker push api ghcr.io/memphis-artcc/atc-job:${{ env.RELEASE_VERSION }}
-        docker push api ghcr.io/memphis-artcc/datafeed-job:latest
-        docker push api ghcr.io/memphis-artcc/datafeed-job:${{ env.RELEASE_VERSION }}
-        docker push api ghcr.io/memphis-artcc/events-job:latest
-        docker push api ghcr.io/memphis-artcc/events-job:${{ env.RELEASE_VERSION }}
-        docker push api ghcr.io/memphis-artcc/roster-job:latest
-        docker push api ghcr.io/memphis-artcc/roster-job:${{ env.RELEASE_VERSION }}
-        docker push api ghcr.io/memphis-artcc/solocerts-job:latest
-        docker push api ghcr.io/memphis-artcc/solocerts-job:${{ env.RELEASE_VERSION }}
+        docker push ghcr.io/memphis-artcc/api:latest
+        docker push ghcr.io/memphis-artcc/api:${{ env.RELEASE_VERSION }}
+        docker push ghcr.io/memphis-artcc/airports-job:latest
+        docker push ghcr.io/memphis-artcc/airports-job:${{ env.RELEASE_VERSION }}
+        docker push ghcr.io/memphis-artcc/atc-job:latest
+        docker push ghcr.io/memphis-artcc/atc-job:${{ env.RELEASE_VERSION }}
+        docker push ghcr.io/memphis-artcc/datafeed-job:latest
+        docker push ghcr.io/memphis-artcc/datafeed-job:${{ env.RELEASE_VERSION }}
+        docker push ghcr.io/memphis-artcc/events-job:latest
+        docker push ghcr.io/memphis-artcc/events-job:${{ env.RELEASE_VERSION }}
+        docker push ghcr.io/memphis-artcc/roster-job:latest
+        docker push ghcr.io/memphis-artcc/roster-job:${{ env.RELEASE_VERSION }}
+        docker push ghcr.io/memphis-artcc/solocerts-job:latest
+        docker push ghcr.io/memphis-artcc/solocerts-job:${{ env.RELEASE_VERSION }}
