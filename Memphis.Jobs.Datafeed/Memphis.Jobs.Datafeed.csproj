@@ -5,15 +5,16 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<UserSecretsId>dotnet-Memphis.Jobs.Datafeed-9fa88bbc-eb12-4273-ae3a-5e23d3716694</UserSecretsId>
+		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="dotenv.net" Version="3.2.1" />
 		<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-		<PackageReference Include="Sentry.AspNetCore" Version="4.13.0" />
-		<PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
-		<PackageReference Include="StackExchange.Redis" Version="2.8.22" />
+		<PackageReference Include="Sentry.AspNetCore" Version="5.0.0" />
+		<PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+		<PackageReference Include="StackExchange.Redis" Version="2.8.24" />
 	</ItemGroup>
 
 	<ItemGroup>
