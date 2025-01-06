@@ -6,6 +6,6 @@ public enum AirportCert
     GROUND,
     SOLO_TOWER,
     TOWER,
-    SOLOR_APPROACH,
+    SOLO_APPROACH,
     APPROACH
 }

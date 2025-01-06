@@ -3,6 +3,7 @@ using System;
 using Memphis.Shared.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Memphis.Shared.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20241221193125_SoloCerts")]
+    partial class SoloCerts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -42,9 +45,6 @@ namespace Memphis.Shared.Migrations
                     b.Property<int>("Departures")
                         .HasColumnType("integer");
 
-                    b.Property<string>("FlightRules")
-                        .HasColumnType("text");
-
                     b.Property<string>("Icao")
                         .IsRequired()
                         .HasColumnType("text");
@@ -61,9 +61,6 @@ namespace Memphis.Shared.Migrations
 
                     b.Property<DateTimeOffset>("Updated")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Visibility")
-                        .HasColumnType("text");
 
                     b.Property<string>("Wind")
                         .HasColumnType("text");
@@ -85,19 +82,32 @@ namespace Memphis.Shared.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("Level")
-                        .HasColumnType("integer");
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Identifier")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("RequiredRating")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("Solo")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
-                    b.ToTable("Certification");
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Certifications");
                 });
 
             modelBuilder.Entity("Memphis.Shared.Models.Comment", b =>
@@ -779,7 +789,7 @@ namespace Memphis.Shared.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("Center")
+                    b.Property<int>("CertificationId")
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("End")
@@ -791,13 +801,12 @@ namespace Memphis.Shared.Migrations
                     b.Property<int>("SubmittedId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("Tier2")
-                        .HasColumnType("integer");
-
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CertificationId");
 
                     b.HasIndex("SubmittedId");
 
@@ -980,9 +989,6 @@ namespace Memphis.Shared.Migrations
                     b.Property<bool>("CanRequestTraining")
                         .HasColumnType("boolean");
 
-                    b.Property<int?>("CenterId")
-                        .HasColumnType("integer");
-
                     b.Property<DateTimeOffset>("Created")
                         .HasColumnType("timestamp with time zone");
 
@@ -997,9 +1003,6 @@ namespace Memphis.Shared.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int?>("GroundId")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Initials")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1011,16 +1014,10 @@ namespace Memphis.Shared.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int?>("RadarId")
-                        .HasColumnType("integer");
-
                     b.Property<int>("Rating")
                         .HasColumnType("integer");
 
                     b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("TowerId")
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("Updated")
@@ -1034,23 +1031,15 @@ namespace Memphis.Shared.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CenterId");
-
                     b.HasIndex("Email");
 
                     b.HasIndex("FirstName");
 
-                    b.HasIndex("GroundId");
-
                     b.HasIndex("LastName");
-
-                    b.HasIndex("RadarId");
 
                     b.HasIndex("Rating");
 
                     b.HasIndex("Status");
-
-                    b.HasIndex("TowerId");
 
                     b.ToTable("Users");
                 });
@@ -1164,6 +1153,13 @@ namespace Memphis.Shared.Migrations
                     b.HasIndex("TrainingTypesId");
 
                     b.ToTable("TrainingScheduleTrainingType");
+                });
+
+            modelBuilder.Entity("Memphis.Shared.Models.Certification", b =>
+                {
+                    b.HasOne("Memphis.Shared.Models.User", null)
+                        .WithMany("Certifications")
+                        .HasForeignKey("UserId");
                 });
 
             modelBuilder.Entity("Memphis.Shared.Models.Comment", b =>
@@ -1313,6 +1309,12 @@ namespace Memphis.Shared.Migrations
 
             modelBuilder.Entity("Memphis.Shared.Models.SoloCert", b =>
                 {
+                    b.HasOne("Memphis.Shared.Models.Certification", "Certification")
+                        .WithMany()
+                        .HasForeignKey("CertificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Memphis.Shared.Models.User", "Submitted")
                         .WithMany()
                         .HasForeignKey("SubmittedId")
@@ -1324,6 +1326,8 @@ namespace Memphis.Shared.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Certification");
 
                     b.Navigation("Submitted");
 
@@ -1401,33 +1405,6 @@ namespace Memphis.Shared.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Memphis.Shared.Models.User", b =>
-                {
-                    b.HasOne("Memphis.Shared.Models.Certification", "Center")
-                        .WithMany()
-                        .HasForeignKey("CenterId");
-
-                    b.HasOne("Memphis.Shared.Models.Certification", "Ground")
-                        .WithMany()
-                        .HasForeignKey("GroundId");
-
-                    b.HasOne("Memphis.Shared.Models.Certification", "Radar")
-                        .WithMany()
-                        .HasForeignKey("RadarId");
-
-                    b.HasOne("Memphis.Shared.Models.Certification", "Tower")
-                        .WithMany()
-                        .HasForeignKey("TowerId");
-
-                    b.Navigation("Center");
-
-                    b.Navigation("Ground");
-
-                    b.Navigation("Radar");
-
-                    b.Navigation("Tower");
-                });
-
             modelBuilder.Entity("RoleUser", b =>
                 {
                     b.HasOne("Memphis.Shared.Models.Role", null)
@@ -1456,6 +1433,11 @@ namespace Memphis.Shared.Migrations
                         .HasForeignKey("TrainingTypesId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Memphis.Shared.Models.User", b =>
+                {
+                    b.Navigation("Certifications");
                 });
 #pragma warning restore 612, 618
         }

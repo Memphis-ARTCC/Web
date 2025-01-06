@@ -3,7 +3,6 @@ using FluentValidation.Results;
 using Memphis.API.Extensions;
 using Memphis.API.Services;
 using Memphis.Shared.Data;
-using Memphis.Shared.Dtos;
 using Memphis.Shared.Enums;
 using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
@@ -23,12 +22,12 @@ public class FeedbackController : ControllerBase
     private readonly DatabaseContext _context;
     private readonly RedisService _redisService;
     private readonly LoggingService _loggingService;
-    private readonly IValidator<FeedbackDto> _validator;
+    private readonly IValidator<FeedbackPayload> _validator;
     private readonly ISentryClient _sentryHub;
     private readonly ILogger<FeedbackController> _logger;
 
     public FeedbackController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<FeedbackDto> validator, ISentryClient sentryHub, ILogger<FeedbackController> logger)
+        IValidator<FeedbackPayload> validator, ISentryClient sentryHub, ILogger<FeedbackController> logger)
     {
         _context = context;
         _redisService = redisService;
@@ -46,7 +45,7 @@ public class FeedbackController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Feedback>>> CreateFeedback(FeedbackDto payload)
+    public async Task<ActionResult<Response<Feedback>>> CreateFeedback(FeedbackPayload payload)
     {
         try
         {
@@ -217,7 +216,7 @@ public class FeedbackController : ControllerBase
         }
     }
 
-    [HttpPut]
+    [HttpPut("{feedbackId:int}")]
     [Authorize(Roles = Constants.CanFeedback)]
     [ProducesResponseType(typeof(Response<Feedback>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
@@ -225,7 +224,7 @@ public class FeedbackController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Feedback>>> UpdateFeedback(FeedbackDto payload)
+    public async Task<ActionResult<Response<Feedback>>> UpdateFeedback(int feedbackId, FeedbackPayload payload)
     {
         try
         {
@@ -245,13 +244,13 @@ public class FeedbackController : ControllerBase
                 });
             }
 
-            var feedback = await _context.Feedback.FindAsync(payload.Id);
+            var feedback = await _context.Feedback.FindAsync(feedbackId);
             if (feedback == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"Feedback '{payload.Id}' not found"
+                    Message = $"Feedback '{feedbackId}' not found"
                 });
             }
 

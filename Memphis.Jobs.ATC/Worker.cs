@@ -246,6 +246,27 @@ namespace Memphis.Jobs.ATC
                     }
                 }
 
+                var onlineControllers = await _context.OnlineControllers.ToListAsync();
+                foreach (var entry in onlineControllers)
+                {
+                    _context.OnlineControllers.Remove(entry);
+                    await _context.SaveChangesAsync();
+                }
+                var onlineSessions = await _context.Sessions.Include(x => x.User).Where(x => x.Duration == TimeSpan.Zero).ToListAsync();
+                foreach (var entry in onlineSessions)
+                {
+                    await _context.OnlineControllers.AddAsync(new OnlineController
+                    {
+                        Cid = entry.User.Id,
+                        Rating = entry.User.Rating,
+                        Name = entry.Name,
+                        Callsign = entry.Callsign,
+                        Frequency = entry.Frequency,
+                        Duration = (DateTimeOffset.UtcNow - entry.Start).ToString("g"),
+                    });
+                    await _context.SaveChangesAsync();
+                }
+
                 _logger.LogInformation("Added {added} sessions", added);
                 _logger.LogInformation("Updated {updated} sessions", updated);
                 _logger.LogInformation("Removed {removed} sessions", removed);

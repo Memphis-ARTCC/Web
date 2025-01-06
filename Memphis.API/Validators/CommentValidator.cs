@@ -1,14 +1,13 @@
 ﻿using FluentValidation;
-using Memphis.Shared.Dtos;
+using Memphis.Shared.Models;
 
 namespace Memphis.API.Validators;
 
-public class CommentValidator : AbstractValidator<CommentDto>
+public class CommentValidator : AbstractValidator<CommentPayload>
 {
     public CommentValidator()
     {
         RuleFor(x => x.UserId).NotEmpty().GreaterThan(0);
-        RuleFor(x => x.Title).NotEmpty();
-        RuleFor(x => x.Description).NotEmpty();
+        RuleFor(x => x.Message).NotEmpty();
     }
 }

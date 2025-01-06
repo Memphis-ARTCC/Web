@@ -3,7 +3,6 @@ using FluentValidation.Results;
 using Memphis.API.Extensions;
 using Memphis.API.Services;
 using Memphis.Shared.Data;
-using Memphis.Shared.Dtos;
 using Memphis.Shared.Enums;
 using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
@@ -23,12 +22,12 @@ public class EventRegistrationController : ControllerBase
     private readonly DatabaseContext _context;
     private readonly RedisService _redisService;
     private readonly LoggingService _loggingService;
-    private readonly IValidator<EventRegistrationDto> _validator;
+    private readonly IValidator<EventRegistrationPayload> _validator;
     private readonly ISentryClient _sentryHub;
     private readonly ILogger<EventRegistrationController> _logger;
 
     public EventRegistrationController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<EventRegistrationDto> validator, ISentryClient sentryHub, ILogger<EventRegistrationController> logger)
+        IValidator<EventRegistrationPayload> validator, ISentryClient sentryHub, ILogger<EventRegistrationController> logger)
     {
         _context = context;
         _redisService = redisService;
@@ -46,7 +45,7 @@ public class EventRegistrationController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<EventRegistration>>> CreateEventRegistration(EventRegistrationDto payload)
+    public async Task<ActionResult<Response<EventRegistration>>> CreateEventRegistration(EventRegistrationPayload payload)
     {
         try
         {

@@ -73,6 +73,19 @@ namespace Memphis.Shared.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Facilities",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Identifier = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Facilities", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Files",
                 columns: table => new
                 {
@@ -186,9 +199,6 @@ namespace Memphis.Shared.Migrations
                     VisitorFrom = table.Column<string>(type: "text", nullable: true),
                     CanRegisterForEvents = table.Column<bool>(type: "boolean", nullable: false),
                     CanRequestTraining = table.Column<bool>(type: "boolean", nullable: false),
-                    Minor = table.Column<int>(type: "integer", nullable: false),
-                    Major = table.Column<int>(type: "integer", nullable: false),
-                    Center = table.Column<int>(type: "integer", nullable: false),
                     DiscordId = table.Column<string>(type: "text", nullable: true),
                     Created = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     Updated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
@@ -261,6 +271,29 @@ namespace Memphis.Shared.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Certifications",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Identifier = table.Column<string>(type: "text", nullable: false),
+                    Description = table.Column<string>(type: "text", nullable: false),
+                    Solo = table.Column<bool>(type: "boolean", nullable: false),
+                    RequiredRating = table.Column<int>(type: "integer", nullable: false),
+                    UserId = table.Column<int>(type: "integer", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Certifications", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Certifications_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Comments",
                 columns: table => new
                 {
@@ -269,8 +302,7 @@ namespace Memphis.Shared.Migrations
                     UserId = table.Column<int>(type: "integer", nullable: false),
                     SubmitterId = table.Column<int>(type: "integer", nullable: false),
                     Confidential = table.Column<bool>(type: "boolean", nullable: false),
-                    Title = table.Column<string>(type: "text", nullable: false),
-                    Description = table.Column<string>(type: "text", nullable: false),
+                    Message = table.Column<string>(type: "text", nullable: false),
                     Timestamp = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -340,6 +372,29 @@ namespace Memphis.Shared.Migrations
                     table.ForeignKey(
                         name: "FK_Hours_Users_UserId",
                         column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "News",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Title = table.Column<string>(type: "text", nullable: false),
+                    Content = table.Column<string>(type: "text", nullable: false),
+                    AuthorId = table.Column<int>(type: "integer", nullable: false),
+                    Created = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    Updated = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_News", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_News_Users_AuthorId",
+                        column: x => x.AuthorId,
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -643,11 +698,6 @@ namespace Memphis.Shared.Migrations
                     { 12, "mentors@memphisartcc.com", "Mentor", "MTR" }
                 });
 
-            migrationBuilder.InsertData(
-                table: "Settings",
-                columns: new[] { "Id", "LastUpdated", "RequiredHours", "VisitingOpen" },
-                values: new object[] { 1, new DateTimeOffset(new DateTime(2024, 6, 11, 19, 13, 2, 458, DateTimeKind.Unspecified).AddTicks(8141), new TimeSpan(0, 0, 0, 0, 0)), 3, true });
-
             migrationBuilder.CreateIndex(
                 name: "IX_Airports_Icao",
                 table: "Airports",
@@ -657,6 +707,11 @@ namespace Memphis.Shared.Migrations
                 name: "IX_Airports_Name",
                 table: "Airports",
                 column: "Name");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Certifications_UserId",
+                table: "Certifications",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Comments_SubmitterId",
@@ -727,6 +782,11 @@ namespace Memphis.Shared.Migrations
                 name: "IX_Hours_Year",
                 table: "Hours",
                 column: "Year");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_News_AuthorId",
+                table: "News",
+                column: "AuthorId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Notifications_Read",
@@ -901,6 +961,9 @@ namespace Memphis.Shared.Migrations
                 name: "Airports");
 
             migrationBuilder.DropTable(
+                name: "Certifications");
+
+            migrationBuilder.DropTable(
                 name: "Comments");
 
             migrationBuilder.DropTable(
@@ -910,6 +973,9 @@ namespace Memphis.Shared.Migrations
                 name: "EventRegistrations");
 
             migrationBuilder.DropTable(
+                name: "Facilities");
+
+            migrationBuilder.DropTable(
                 name: "Feedback");
 
             migrationBuilder.DropTable(
@@ -917,6 +983,9 @@ namespace Memphis.Shared.Migrations
 
             migrationBuilder.DropTable(
                 name: "Hours");
+
+            migrationBuilder.DropTable(
+                name: "News");
 
             migrationBuilder.DropTable(
                 name: "Notifications");

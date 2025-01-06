@@ -3,6 +3,7 @@ using System;
 using Memphis.Shared.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Memphis.Shared.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20241227160707_Certs")]
+    partial class Certs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,6 +24,21 @@ namespace Memphis.Shared.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("CertificationUser", b =>
+                {
+                    b.Property<int>("CertificationsId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UsersId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("CertificationsId", "UsersId");
+
+                    b.HasIndex("UsersId");
+
+                    b.ToTable("CertificationUser");
+                });
 
             modelBuilder.Entity("Memphis.Shared.Models.Airport", b =>
                 {
@@ -85,15 +103,16 @@ namespace Memphis.Shared.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<int>("Level")
                         .HasColumnType("integer");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<bool>("Solo")
-                        .HasColumnType("boolean");
 
                     b.HasKey("Id");
 
@@ -980,9 +999,6 @@ namespace Memphis.Shared.Migrations
                     b.Property<bool>("CanRequestTraining")
                         .HasColumnType("boolean");
 
-                    b.Property<int?>("CenterId")
-                        .HasColumnType("integer");
-
                     b.Property<DateTimeOffset>("Created")
                         .HasColumnType("timestamp with time zone");
 
@@ -997,9 +1013,6 @@ namespace Memphis.Shared.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int?>("GroundId")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Initials")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1011,16 +1024,10 @@ namespace Memphis.Shared.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int?>("RadarId")
-                        .HasColumnType("integer");
-
                     b.Property<int>("Rating")
                         .HasColumnType("integer");
 
                     b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("TowerId")
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("Updated")
@@ -1034,23 +1041,15 @@ namespace Memphis.Shared.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CenterId");
-
                     b.HasIndex("Email");
 
                     b.HasIndex("FirstName");
 
-                    b.HasIndex("GroundId");
-
                     b.HasIndex("LastName");
-
-                    b.HasIndex("RadarId");
 
                     b.HasIndex("Rating");
 
                     b.HasIndex("Status");
-
-                    b.HasIndex("TowerId");
 
                     b.ToTable("Users");
                 });
@@ -1164,6 +1163,21 @@ namespace Memphis.Shared.Migrations
                     b.HasIndex("TrainingTypesId");
 
                     b.ToTable("TrainingScheduleTrainingType");
+                });
+
+            modelBuilder.Entity("CertificationUser", b =>
+                {
+                    b.HasOne("Memphis.Shared.Models.Certification", null)
+                        .WithMany()
+                        .HasForeignKey("CertificationsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Memphis.Shared.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UsersId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Memphis.Shared.Models.Comment", b =>
@@ -1399,33 +1413,6 @@ namespace Memphis.Shared.Migrations
                     b.Navigation("Trainer");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Memphis.Shared.Models.User", b =>
-                {
-                    b.HasOne("Memphis.Shared.Models.Certification", "Center")
-                        .WithMany()
-                        .HasForeignKey("CenterId");
-
-                    b.HasOne("Memphis.Shared.Models.Certification", "Ground")
-                        .WithMany()
-                        .HasForeignKey("GroundId");
-
-                    b.HasOne("Memphis.Shared.Models.Certification", "Radar")
-                        .WithMany()
-                        .HasForeignKey("RadarId");
-
-                    b.HasOne("Memphis.Shared.Models.Certification", "Tower")
-                        .WithMany()
-                        .HasForeignKey("TowerId");
-
-                    b.Navigation("Center");
-
-                    b.Navigation("Ground");
-
-                    b.Navigation("Radar");
-
-                    b.Navigation("Tower");
                 });
 
             modelBuilder.Entity("RoleUser", b =>

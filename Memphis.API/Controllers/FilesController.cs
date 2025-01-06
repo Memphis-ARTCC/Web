@@ -3,8 +3,8 @@ using FluentValidation.Results;
 using Memphis.API.Extensions;
 using Memphis.API.Services;
 using Memphis.Shared.Data;
-using Memphis.Shared.Dtos;
 using Memphis.Shared.Enums;
+using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,12 +24,12 @@ public class FilesController : ControllerBase
     private readonly RedisService _redisService;
     private readonly S3Service _s3Service;
     private readonly LoggingService _loggingService;
-    private readonly IValidator<FileDto> _validator;
+    private readonly IValidator<FilePayload> _validator;
     private readonly ISentryClient _sentryHub;
     private readonly ILogger<FilesController> _logger;
 
     public FilesController(DatabaseContext context, RedisService redisService, S3Service s3Service, LoggingService loggingService,
-        IValidator<FileDto> validator, ISentryClient sentryHub, ILogger<FilesController> logger)
+        IValidator<FilePayload> validator, ISentryClient sentryHub, ILogger<FilesController> logger)
     {
         _context = context;
         _redisService = redisService;
@@ -48,7 +48,7 @@ public class FilesController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<File>>> CreateFile(FileDto payload)
+    public async Task<ActionResult<Response<File>>> CreateFile(FilePayload payload)
     {
         try
         {
@@ -189,7 +189,7 @@ public class FilesController : ControllerBase
         }
     }
 
-    [HttpPut]
+    [HttpPut("{fileId:int}")]
     [Authorize(Roles = Constants.CanFiles)]
     [ProducesResponseType(typeof(Response<File>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
@@ -197,7 +197,7 @@ public class FilesController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<File>>> UpdateFile(FileDto payload)
+    public async Task<ActionResult<Response<File>>> UpdateFile(int fileId, FilePayload payload)
     {
         try
         {
@@ -217,13 +217,13 @@ public class FilesController : ControllerBase
                 });
             }
 
-            var file = await _context.Files.FindAsync(payload.Id);
+            var file = await _context.Files.FindAsync(fileId);
             if (file == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"File '{payload.Id}' not found"
+                    Message = $"File '{fileId}' not found"
                 });
             }
 

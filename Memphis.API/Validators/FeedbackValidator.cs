@@ -1,9 +1,9 @@
 ﻿using FluentValidation;
-using Memphis.Shared.Dtos;
+using Memphis.Shared.Models;
 
 namespace Memphis.API.Validators;
 
-public class FeedbackValidator : AbstractValidator<FeedbackDto>
+public class FeedbackValidator : AbstractValidator<FeedbackPayload>
 {
     public FeedbackValidator()
     {

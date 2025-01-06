@@ -1,9 +1,9 @@
 ﻿using FluentValidation;
-using Memphis.Shared.Dtos;
+using Memphis.Shared.Models;
 
 namespace Memphis.API.Validators;
 
-public class EventPositionValidator : AbstractValidator<EventPositionDto>
+public class EventPositionValidator : AbstractValidator<EventPositionPayload>
 {
     public EventPositionValidator()
     {
