@@ -22,13 +22,13 @@ jobs:
       run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
     - name: Build images
       run: |
-        docker build -t api -f Memphis.API/Dockerfile .
-        docker build -t airports-job -f Memphis.Jobs.Airports/Dockerfile .
-        docker build -t atc-job -f Memphis.Jobs.ATC/Dockerfile .
-        docker build -t datafeed-job -f Memphis.Jobs.Datafeed/Dockerfile .
-        docker build -t events-job -f Memphis.Jobs.Events/Dockerfile .
-        docker build -t roster-job -f Memphis.Jobs.Roster/Dockerfile .
-        docker build -t solocerts-job -f Memphis.Jobs.SoloCerts/Dockerfile .
+        docker build -t ghcr.io/memphis-artcc/api -f Memphis.API/Dockerfile .
+        docker build -t ghcr.io/memphis-artcc/airports-job -f Memphis.Jobs.Airports/Dockerfile .
+        docker build -t ghcr.io/memphis-artcc/atc-job -f Memphis.Jobs.ATC/Dockerfile .
+        docker build -t ghcr.io/memphis-artcc/datafeed-job -f Memphis.Jobs.Datafeed/Dockerfile .
+        docker build -t ghcr.io/memphis-artcc/events-job -f Memphis.Jobs.Events/Dockerfile .
+        docker build -t ghcr.io/memphis-artcc/roster-job -f Memphis.Jobs.Roster/Dockerfile .
+        docker build -t ghcr.io/memphis-artcc/solocerts-job -f Memphis.Jobs.SoloCerts/Dockerfile .
     - name: Tag images
       run: |
         docker tag api ghcr.io/memphis-artcc/api:latest
