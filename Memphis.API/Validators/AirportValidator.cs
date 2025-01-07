@@ -1,9 +1,9 @@
 ﻿using FluentValidation;
-using Memphis.Shared.Dtos;
+using Memphis.Shared.Models;
 
 namespace Memphis.API.Validators;
 
-public class AirportValidator : AbstractValidator<AirportDto>
+public class AirportValidator : AbstractValidator<AirportPayload>
 {
     public AirportValidator()
     {

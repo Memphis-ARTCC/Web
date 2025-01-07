@@ -38,7 +38,7 @@ public class RosterDto
     [JsonPropertyName("facility")]
     public required string Facility { get; set; }
 
-    [JsonPropertyName("phone")]
+    [JsonPropertyName("rating")]
     public Rating Rating { get; set; }
 
     [JsonPropertyName("created_at")]

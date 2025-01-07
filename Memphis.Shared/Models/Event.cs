@@ -1,8 +1,4 @@
-﻿#region
-
-using Microsoft.EntityFrameworkCore;
-
-#endregion
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace Memphis.Shared.Models;
 
@@ -20,4 +16,14 @@ public class Event
     public bool IsOpen { get; set; }
     public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset Updated { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public class EventPayload
+{
+    public required string Title { get; set; }
+    public required string Description { get; set; }
+    public required string Host { get; set; }
+    public DateTimeOffset Start { get; set; }
+    public DateTimeOffset End { get; set; }
+    public bool IsOpen { get; set; }
 }

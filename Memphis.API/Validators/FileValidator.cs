@@ -1,9 +1,9 @@
 ﻿using FluentValidation;
-using Memphis.Shared.Dtos;
+using Memphis.Shared.Models;
 
 namespace Memphis.API.Validators;
 
-public class FileValidator : AbstractValidator<FileDto>
+public class FileValidator : AbstractValidator<FilePayload>
 {
     public FileValidator()
     {

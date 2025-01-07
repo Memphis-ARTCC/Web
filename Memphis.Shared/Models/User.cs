@@ -15,18 +15,30 @@ public class User
     public required string LastName { get; set; }
     public required string Initials { get; set; }
     public required string Email { get; set; }
-    public Rating Rating { get; set; }
+    public required Rating Rating { get; set; }
     public DateTimeOffset Joined { get; set; }
     public UserStatus Status { get; set; } = UserStatus.ACTIVE;
     public bool Visitor { get; set; }
     public string? VisitorFrom { get; set; }
     public bool CanRegisterForEvents { get; set; } = true;
     public bool CanRequestTraining { get; set; } = true;
+    public Certification? Ground { get; set; }
+    public Certification? Tower { get; set; }
+    public Certification? Radar { get; set; }
+    public Certification? Center { get; set; }
     public ICollection<Role>? Roles { get; set; }
-    public AirportCert Minor { get; set; } = AirportCert.NONE;
-    public AirportCert Major { get; set; } = AirportCert.NONE;
-    public CenterCert Center { get; set; } = CenterCert.NONE;
     public string? DiscordId { get; set; }
     public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset Updated { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public class UserPayload
+{
+    public int Id { get; set; }
+    public bool CanRegisterForEvents { get; set; } = true;
+    public bool CanRequestTraining { get; set; } = true;
+    public int? GroundId { get; set; }
+    public int? TowerId { get; set; }
+    public int? RadarId { get; set; }
+    public int? CenterId { get; set; }
 }

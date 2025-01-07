@@ -1,6 +1,5 @@
 ﻿using Memphis.Shared.Enums;
 using Memphis.Shared.Models;
-using Memphis.Shared.Utils;
 
 namespace Memphis.Shared.Dtos;
 
@@ -9,13 +8,14 @@ public class RosterUserDto
     public int Cid { get; set; }
     public required string Name { get; set; }
     public required string Initials { get; set; }
-    public required string Rating { get; set; }
+    public Rating Rating { get; set; }
     public UserStatus Status { get; set; }
     public bool Visitor { get; set; }
     public string? VisitorFrom { get; set; }
-    public AirportCert Minor { get; set; }
-    public AirportCert Major { get; set; }
-    public CenterCert Center { get; set; }
+    public Certification? Ground { get; set; }
+    public Certification? Tower { get; set; }
+    public Certification? Radar { get; set; }
+    public Certification? Center { get; set; }
     public required IList<Role> Roles { get; set; }
 
     public static RosterUserDto Parse(User user)
@@ -25,13 +25,15 @@ public class RosterUserDto
             Cid = user.Id,
             Name = $"{user.FirstName} {user.LastName}",
             Initials = user.Initials,
-            Rating = Helpers.GetRatingName(user.Rating),
+            Rating = user.Rating,
             Status = user.Status,
             Visitor = user.Visitor,
             VisitorFrom = user.VisitorFrom,
-            Minor = user.Minor,
-            Major = user.Major,
-            Roles = user.Roles?.ToList() ?? new List<Role>()
+            Ground = user.Ground,
+            Tower = user.Tower,
+            Radar = user.Radar,
+            Center = user.Center,
+            Roles = user.Roles?.ToList() ?? [],
         };
     }
 

@@ -44,7 +44,9 @@ public class EmailLogsController : ControllerBase
 
             var raw = _context.EmailLogs.OrderBy(x => x.Timestamp);
             if (to != null)
-                raw.Where(x => x.To.ToLower() == to.ToLower());
+            {
+                raw.Where(x => x.To.Equals(to, StringComparison.OrdinalIgnoreCase));
+            }
             var result = await raw.Skip((page - 1) * size).Take(size).ToListAsync();
             var totalCount = await raw.CountAsync();
 

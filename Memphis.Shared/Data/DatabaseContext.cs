@@ -16,12 +16,14 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
     public required DbSet<Feedback> Feedback { get; set; }
     public required DbSet<File> Files { get; set; }
     public required DbSet<Hours> Hours { get; set; }
+    public required DbSet<News> News { get; set; }
     public required DbSet<Notification> Notifications { get; set; }
     public required DbSet<OnlineController> OnlineControllers { get; set; }
     public required DbSet<Ots> Ots { get; set; }
     public required DbSet<Role> Roles { get; set; }
     public required DbSet<Session> Sessions { get; set; }
     public required DbSet<Settings> Settings { get; set; }
+    public required DbSet<SoloCert> SoloCerts { get; set; }
     public required DbSet<TrainingMilestone> TrainingMilestones { get; set; }
     public required DbSet<TrainingScheduleEntry> TrainingScheduleEntries { get; set; }
     public required DbSet<TrainingSchedule> TrainingSchedules { get; set; }
@@ -117,15 +119,6 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
             Name = "Mentor",
             NameShort = "MTR",
             Email = "mentors@memphisartcc.com"
-        });
-
-        // Settings
-        modelBuilder.Entity<Settings>().HasData(new Settings
-        {
-            Id = 1,
-            VisitingOpen = true,
-            RequiredHours = 3,
-            LastUpdated = DateTimeOffset.UtcNow
         });
     }
 }

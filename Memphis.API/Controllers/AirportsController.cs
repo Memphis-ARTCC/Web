@@ -3,7 +3,7 @@ using FluentValidation.Results;
 using Memphis.API.Extensions;
 using Memphis.API.Services;
 using Memphis.Shared.Data;
-using Memphis.Shared.Dtos;
+using Memphis.Shared.Dtos.Avwx;
 using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
@@ -22,12 +22,12 @@ public class AirportsController : ControllerBase
     private readonly DatabaseContext _context;
     private readonly RedisService _redisService;
     private readonly LoggingService _loggingService;
-    private readonly IValidator<AirportDto> _validator;
+    private readonly IValidator<AirportPayload> _validator;
     private readonly ISentryClient _sentryHub;
     private readonly ILogger<AirportsController> _logger;
 
     public AirportsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<AirportDto> validator, ISentryClient sentryHub, ILogger<AirportsController> logger)
+        IValidator<AirportPayload> validator, ISentryClient sentryHub, ILogger<AirportsController> logger)
     {
         _context = context;
         _redisService = redisService;
@@ -45,7 +45,7 @@ public class AirportsController : ControllerBase
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Airport>>> CreateAirport(AirportDto payload)
+    public async Task<ActionResult<Response<Airport>>> CreateAirport(AirportPayload payload)
     {
         try
         {
@@ -65,10 +65,35 @@ public class AirportsController : ControllerBase
                 });
             }
 
+            using var client = new HttpClient();
+            var token = Environment.GetEnvironmentVariable("AVWX_API_KEY");
+            var metarResponse = await client.GetFromJsonAsync<Metar>($"https://avwx.rest/api/metar/{payload.Icao}?token={token}");
+            if (metarResponse == null)
+            {
+                return StatusCode(500, new Response<string?>
+                {
+                    StatusCode = 500,
+                    Message = "Failed to get METAR data"
+                });
+            }
+
+            var wind = $"{metarResponse.WindSpeed.Repr}@{metarResponse.WindDirection.Repr}";
+            if (metarResponse.WindGust != null)
+            {
+                wind += $"G{metarResponse.WindGust.Repr}";
+            }
+            var altimeter = metarResponse.Altimeter.Repr.Replace("A", "").Insert(2, ".");
+
             var result = await _context.Airports.AddAsync(new Airport
             {
                 Name = payload.Name,
-                Icao = payload.Icao,
+                Icao = payload.Icao.ToUpper(),
+                Wind = wind,
+                Altimeter = altimeter,
+                Temperature = metarResponse.Temperature.Repr,
+                Visibility = metarResponse.Visibility.Repr,
+                FlightRules = metarResponse.FlightRules,
+                MetarRaw = metarResponse.Raw
             });
             await _context.SaveChangesAsync();
             string newData = JsonConvert.SerializeObject(result.Entity);
@@ -118,7 +143,7 @@ public class AirportsController : ControllerBase
     {
         try
         {
-            Airport? result = await _context.Airports.FindAsync(airportId);
+            var result = await _context.Airports.FindAsync(airportId);
             if (result == null)
             {
                 return NotFound(new Response<int>
@@ -143,7 +168,7 @@ public class AirportsController : ControllerBase
         }
     }
 
-    [HttpPut]
+    [HttpPut("{airportId:int}")]
     [Authorize(Roles = Constants.CanAirports)]
     [ProducesResponseType(typeof(Response<Airport>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
@@ -151,7 +176,7 @@ public class AirportsController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Airport>>> UpdateAirport(AirportDto payload)
+    public async Task<ActionResult<Response<Airport>>> UpdateAirport(int airportId, AirportPayload payload)
     {
         try
         {
@@ -160,7 +185,7 @@ public class AirportsController : ControllerBase
                 return StatusCode(401);
             }
 
-            ValidationResult validation = await _validator.ValidateAsync(payload);
+            var validation = await _validator.ValidateAsync(payload);
             if (!validation.IsValid)
             {
                 return BadRequest(new Response<IList<ValidationFailure>>
@@ -171,22 +196,22 @@ public class AirportsController : ControllerBase
                 });
             }
 
-            Airport? airport = await _context.Airports.FindAsync();
+            var airport = await _context.Airports.FindAsync(airportId);
             if (airport == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"Airport '{payload.Id}' not found",
+                    Message = $"Airport '{airportId}' not found",
                 });
             }
 
-            string oldData = JsonConvert.SerializeObject(airport);
+            var oldData = JsonConvert.SerializeObject(airport);
             airport.Name = payload.Name;
             airport.Icao = payload.Icao;
             airport.Updated = DateTimeOffset.UtcNow;
             await _context.SaveChangesAsync();
-            string newData = JsonConvert.SerializeObject(airport);
+            var newData = JsonConvert.SerializeObject(airport);
 
             await _loggingService.AddWebsiteLog(Request, $"Updated airport '{airport.Id}'", oldData, newData);
 
@@ -220,7 +245,7 @@ public class AirportsController : ControllerBase
                 return StatusCode(401);
             }
 
-            Airport? airport = await _context.Airports.FindAsync(airportId);
+            var airport = await _context.Airports.FindAsync(airportId);
             if (airport == null)
             {
                 return NotFound(new Response<int>
@@ -231,7 +256,7 @@ public class AirportsController : ControllerBase
                 });
             }
 
-            string oldData = JsonConvert.SerializeObject(airport);
+            var oldData = JsonConvert.SerializeObject(airport);
             _context.Airports.Remove(airport);
             await _context.SaveChangesAsync();
 

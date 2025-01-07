@@ -1,9 +1,5 @@
-﻿#region
-
-using Memphis.Shared.Enums;
+﻿using Memphis.Shared.Enums;
 using Microsoft.EntityFrameworkCore;
-
-#endregion
 
 namespace Memphis.Shared.Models;
 
@@ -23,4 +19,15 @@ public class Ots
     public OtsResult? Result { get; set; }
     public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset Updated { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public class OtsPayload
+{
+    public int UserId { get; set; }
+    public int? InstructorId { get; set; }
+    public DateTimeOffset? Start { get; set; }
+    public required TrainingMilestone Milestone { get; set; }
+    public OtsStatus Status { get; set; } = OtsStatus.PENDING;
+    public required string Facility { get; set; }
+    public OtsResult? Result { get; set; }
 }

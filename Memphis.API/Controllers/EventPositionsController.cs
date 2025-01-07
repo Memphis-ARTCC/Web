@@ -3,7 +3,6 @@ using FluentValidation.Results;
 using Memphis.API.Extensions;
 using Memphis.API.Services;
 using Memphis.Shared.Data;
-using Memphis.Shared.Dtos;
 using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
@@ -22,12 +21,12 @@ public class EventPositionsController : ControllerBase
     private readonly DatabaseContext _context;
     private readonly RedisService _redisService;
     private readonly LoggingService _loggingService;
-    private readonly IValidator<EventPositionDto> _validator;
+    private readonly IValidator<EventPositionPayload> _validator;
     private readonly ISentryClient _sentryHub;
     private readonly ILogger<EventPositionsController> _logger;
 
     public EventPositionsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<EventPositionDto> validator, ISentryClient sentryHub, ILogger<EventPositionsController> logger)
+        IValidator<EventPositionPayload> validator, ISentryClient sentryHub, ILogger<EventPositionsController> logger)
     {
         _context = context;
         _redisService = redisService;
@@ -45,7 +44,7 @@ public class EventPositionsController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<EventPosition>>> CreateEventPosition(EventPositionDto payload)
+    public async Task<ActionResult<Response<EventPosition>>> CreateEventPosition(EventPositionPayload payload)
     {
         try
         {

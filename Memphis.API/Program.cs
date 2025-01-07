@@ -99,18 +99,19 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddScoped<IValidator<AirportDto>, AirportValidator>();
-builder.Services.AddScoped<IValidator<CommentDto>, CommentValidator>();
-builder.Services.AddScoped<IValidator<EventPositionDto>, EventPositionValidator>();
-builder.Services.AddScoped<IValidator<EventRegistrationDto>, EventRegistrationValidator>();
-builder.Services.AddScoped<IValidator<EventDto>, EventValidator>();
-builder.Services.AddScoped<IValidator<Facility>, FacilityValidator>();
-builder.Services.AddScoped<IValidator<FaqDto>, FaqValidator>();
-builder.Services.AddScoped<IValidator<FeedbackDto>, FeedbackValidator>();
-builder.Services.AddScoped<IValidator<FileDto>, FileValidator>();
-builder.Services.AddScoped<IValidator<OtsDto>, OtsValidator>();
+builder.Services.AddScoped<IValidator<AirportPayload>, AirportValidator>();
+builder.Services.AddScoped<IValidator<CommentPayload>, CommentValidator>();
+builder.Services.AddScoped<IValidator<EventPositionPayload>, EventPositionValidator>();
+builder.Services.AddScoped<IValidator<EventRegistrationPayload>, EventRegistrationValidator>();
+builder.Services.AddScoped<IValidator<EventPayload>, EventValidator>();
+builder.Services.AddScoped<IValidator<FacilityPayload>, FacilityValidator>();
+builder.Services.AddScoped<IValidator<FeedbackPayload>, FeedbackValidator>();
+builder.Services.AddScoped<IValidator<FilePayload>, FileValidator>();
+builder.Services.AddScoped<IValidator<NewsPayload>, NewsValidator>();
+builder.Services.AddScoped<IValidator<OtsPayload>, OtsValidator>();
 builder.Services.AddScoped<IValidator<TrainingMilestone>, TrainingMilestoneValidator>();
 builder.Services.AddScoped<IValidator<TrainingScheduleDto>, TrainingScheduleValidator>();
+builder.Services.AddScoped<IValidator<UserPayload>, UserValidator>();
 
 builder.Services.AddScoped<LoggingService>();
 builder.Services.AddScoped<RedisService>();

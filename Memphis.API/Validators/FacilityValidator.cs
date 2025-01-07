@@ -3,7 +3,7 @@ using Memphis.Shared.Models;
 
 namespace Memphis.API.Validators;
 
-public class FacilityValidator : AbstractValidator<Facility>
+public class FacilityValidator : AbstractValidator<FacilityPayload>
 {
     public FacilityValidator()
     {

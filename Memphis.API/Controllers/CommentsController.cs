@@ -3,7 +3,6 @@ using FluentValidation.Results;
 using Memphis.API.Extensions;
 using Memphis.API.Services;
 using Memphis.Shared.Data;
-using Memphis.Shared.Dtos;
 using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
@@ -22,12 +21,12 @@ public class CommentsController : ControllerBase
     private readonly DatabaseContext _context;
     private readonly RedisService _redisService;
     private readonly LoggingService _loggingService;
-    private readonly IValidator<CommentDto> _validator;
+    private readonly IValidator<CommentPayload> _validator;
     private readonly ISentryClient _sentryHub;
     private readonly ILogger<CommentsController> _logger;
 
     public CommentsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<CommentDto> validator, ISentryClient sentryHub, ILogger<CommentsController> logger)
+        IValidator<CommentPayload> validator, ISentryClient sentryHub, ILogger<CommentsController> logger)
     {
         _context = context;
         _redisService = redisService;
@@ -45,7 +44,7 @@ public class CommentsController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<int>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Comment>>> CreateComment(CommentDto payload)
+    public async Task<ActionResult<Response<Comment>>> CreateComment(CommentPayload payload)
     {
         try
         {
@@ -98,8 +97,7 @@ public class CommentsController : ControllerBase
                 User = user,
                 Submitter = submitter,
                 Confidential = payload.Confidential,
-                Title = payload.Title,
-                Description = payload.Description,
+                Message = payload.Message,
             });
             await _context.SaveChangesAsync();
             var newData = JsonConvert.SerializeObject(result.Entity);

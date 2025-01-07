@@ -3,7 +3,6 @@ using FluentValidation.Results;
 using Memphis.API.Extensions;
 using Memphis.API.Services;
 using Memphis.Shared.Data;
-using Memphis.Shared.Dtos;
 using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
@@ -23,12 +22,12 @@ public class EventsController : ControllerBase
     private readonly RedisService _redisService;
     private readonly LoggingService _loggingService;
     private readonly S3Service _s3Service;
-    private readonly IValidator<EventDto> _validator;
+    private readonly IValidator<EventPayload> _validator;
     private readonly ISentryClient _sentryHub;
     private readonly ILogger<EventsController> _logger;
 
     public EventsController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        S3Service s3Service, IValidator<EventDto> validator, ISentryClient sentryHub, ILogger<EventsController> logger)
+        S3Service s3Service, IValidator<EventPayload> validator, ISentryClient sentryHub, ILogger<EventsController> logger)
     {
         _context = context;
         _redisService = redisService;
@@ -46,7 +45,7 @@ public class EventsController : ControllerBase
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Event>>> CreateEvent(EventDto payload)
+    public async Task<ActionResult<Response<Event>>> CreateEvent(EventPayload payload)
     {
         try
         {
@@ -123,8 +122,9 @@ public class EventsController : ControllerBase
             var getClosed = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList);
             if (getClosed)
             {
-                var result = await _context.Events.OrderBy(x => x.Start).Skip((page - 1) * size).Take(size)
-                    .ToListAsync();
+                var result = await _context.Events
+                    .OrderBy(x => x.Start)
+                    .Skip((page - 1) * size).Take(size).ToListAsync();
                 var totalCount = await _context.Events.Where(x => x.IsOpen).OrderBy(x => x.Start).CountAsync();
                 return Ok(new ResponsePaging<IList<Event>>
                 {
@@ -203,7 +203,7 @@ public class EventsController : ControllerBase
         }
     }
 
-    [HttpPut]
+    [HttpPut("{eventId:int}")]
     [Authorize(Roles = Constants.CanEvents)]
     [ProducesResponseType(typeof(Response<Event>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
@@ -211,7 +211,7 @@ public class EventsController : ControllerBase
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
-    public async Task<ActionResult<Response<Event>>> UpdateEvent(EventDto payload)
+    public async Task<ActionResult<Response<Event>>> UpdateEvent(int eventId, EventPayload payload)
     {
         try
         {
@@ -231,13 +231,13 @@ public class EventsController : ControllerBase
                 });
             }
 
-            var @event = await _context.Events.FindAsync(payload.Id);
+            var @event = await _context.Events.FindAsync(eventId);
             if (@event == null)
             {
                 return NotFound(new Response<string?>
                 {
                     StatusCode = 404,
-                    Message = $"Event '{payload.Id}' not found"
+                    Message = $"Event '{eventId}' not found"
                 });
             }
 
