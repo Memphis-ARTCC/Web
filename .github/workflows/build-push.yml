@@ -22,49 +22,49 @@ jobs:
       run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
     - name: Build & Push API
       run: |
-        docker build -t ghcr.io/memphis-artcc/api -f Memphis.API/Dockerfile .
+        docker build -t api -f Memphis.API/Dockerfile .
         docker tag api ghcr.io/memphis-artcc/api:latest
         docker tag api ghcr.io/memphis-artcc/api:${{ env.RELEASE_VERSION }}
         docker push ghcr.io/memphis-artcc/api:latest
         docker push ghcr.io/memphis-artcc/api:${{ env.RELEASE_VERSION }}
     - name: Build & Push Airports Job
       run: |
-        docker build -t ghcr.io/memphis-artcc/airports-job -f Memphis.Jobs.Airports/Dockerfile .
+        docker build -t airports-job -f Memphis.Jobs.Airports/Dockerfile .
         docker tag api ghcr.io/memphis-artcc/airports-job:latest
         docker tag api ghcr.io/memphis-artcc/airports-job:${{ env.RELEASE_VERSION }}
         docker push ghcr.io/memphis-artcc/airports-job:latest
         docker push ghcr.io/memphis-artcc/airports-job:${{ env.RELEASE_VERSION }}
     - name: Build & Push ATC Job
       run: |
-        docker build -t ghcr.io/memphis-artcc/atc-job -f Memphis.Jobs.ATC/Dockerfile .
+        docker build -t atc-job -f Memphis.Jobs.ATC/Dockerfile .
         docker tag api ghcr.io/memphis-artcc/atc-job:latest
         docker tag api ghcr.io/memphis-artcc/atc-job:${{ env.RELEASE_VERSION }}
         docker push ghcr.io/memphis-artcc/atc-job:latest
         docker push ghcr.io/memphis-artcc/atc-job:${{ env.RELEASE_VERSION }}
     - name: Build & Push Datafeed Job
       run: |
-        docker build -t ghcr.io/memphis-artcc/datafeed-job -f Memphis.Jobs.ATC/Dockerfile .
+        docker build -t datafeed-job -f Memphis.Jobs.ATC/Dockerfile .
         docker tag api ghcr.io/memphis-artcc/datafeed-job:latest
         docker tag api ghcr.io/memphis-artcc/datafeed-job:${{ env.RELEASE_VERSION }}
         docker push ghcr.io/memphis-artcc/datafeed-job:latest
         docker push ghcr.io/memphis-artcc/datafeed-job:${{ env.RELEASE_VERSION }}
     - name: Build & Push Events Job
       run: |
-        docker build -t ghcr.io/memphis-artcc/events-job -f Memphis.Jobs.ATC/Dockerfile .
+        docker build -t events-job -f Memphis.Jobs.ATC/Dockerfile .
         docker tag api ghcr.io/memphis-artcc/events-job:latest
         docker tag api ghcr.io/memphis-artcc/events-job:${{ env.RELEASE_VERSION }}
         docker push ghcr.io/memphis-artcc/events-job:latest
         docker push ghcr.io/memphis-artcc/events-job:${{ env.RELEASE_VERSION }}
     - name: Build & Push Roster Job
       run: |
-        docker build -t ghcr.io/memphis-artcc/roster-job -f Memphis.Jobs.ATC/Dockerfile .
+        docker build -t roster-job -f Memphis.Jobs.ATC/Dockerfile .
         docker tag api ghcr.io/memphis-artcc/roster-job:latest
         docker tag api ghcr.io/memphis-artcc/roster-job:${{ env.RELEASE_VERSION }}
         docker push ghcr.io/memphis-artcc/roster-job:latest
         docker push ghcr.io/memphis-artcc/roster-job:${{ env.RELEASE_VERSION }}
     - name: Build & Push Solo Certs Job
       run: |
-        docker build -t ghcr.io/memphis-artcc/solocerts-job -f Memphis.Jobs.ATC/Dockerfile .
+        docker build -t solocerts-job -f Memphis.Jobs.ATC/Dockerfile .
         docker tag api ghcr.io/memphis-artcc/solocerts-job:latest
         docker tag api ghcr.io/memphis-artcc/solocerts-job:${{ env.RELEASE_VERSION }}
         docker push ghcr.io/memphis-artcc/solocerts-job:latest
