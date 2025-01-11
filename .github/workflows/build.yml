@@ -10,7 +10,7 @@ jobs:
     steps:
     - name: Checkout the repo
       uses: actions/checkout@v2
-    - name: Build api image
+    - name: Build images
       run: |
         docker build -t api -f Memphis.API/Dockerfile .
         docker build -t airports-job -f Memphis.Jobs.Airports/Dockerfile .
