@@ -49,7 +49,7 @@ public class HoursController : ControllerBase
                     DeliveryHours = entry.DeliveryHours,
                     GroundHours = entry.GroundHours,
                     TowerHours = entry.TowerHours,
-                    ApproachHours = entry.ApproachHours,
+                    TraconHours = entry.TraconHours,
                     CenterHours = entry.CenterHours
                 });
             }
@@ -70,7 +70,7 @@ public class HoursController : ControllerBase
                     DeliveryHours = 0.0,
                     GroundHours = 0.0,
                     TowerHours = 0.0,
-                    ApproachHours = 0.0,
+                    TraconHours = 0.0,
                     CenterHours = 0.0
                 });
             }
@@ -124,7 +124,7 @@ public class HoursController : ControllerBase
                         DeliveryHours = 0.0,
                         GroundHours = 0.0,
                         TowerHours = 0.0,
-                        ApproachHours = 0.0,
+                        TraconHours = 0.0,
                         CenterHours = 0.0
                     });
                     now = now.AddMonths(-1);
@@ -139,7 +139,7 @@ public class HoursController : ControllerBase
                     DeliveryHours = hours.DeliveryHours,
                     GroundHours = hours.GroundHours,
                     TowerHours = hours.TowerHours,
-                    ApproachHours = hours.ApproachHours,
+                    TraconHours = hours.TraconHours,
                     CenterHours = hours.CenterHours
                 });
                 now = now.AddMonths(-1);

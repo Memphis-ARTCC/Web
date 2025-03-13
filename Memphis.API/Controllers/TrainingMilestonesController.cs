@@ -65,6 +65,7 @@ public class TrainingMilestonesController : ControllerBase
 
             var result = await _context.TrainingMilestones.AddAsync(new TrainingMilestone
             {
+                Track = payload.Track,
                 Code = payload.Code,
                 Name = payload.Name,
                 Facility = payload.Facility,
@@ -185,6 +186,7 @@ public class TrainingMilestonesController : ControllerBase
             }
 
             var oldData = JsonConvert.SerializeObject(milestone);
+            milestone.Track = payload.Track;
             milestone.Code = payload.Code;
             milestone.Name = payload.Name;
             milestone.Facility = payload.Facility;

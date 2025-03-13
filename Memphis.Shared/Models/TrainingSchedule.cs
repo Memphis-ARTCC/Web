@@ -7,5 +7,5 @@ public class TrainingSchedule
     public User? Student { get; set; }
     public required ICollection<TrainingType> TrainingTypes { get; set; }
     public DateTimeOffset Start { get; set; }
-    public DateTimeOffset End => Start.AddHours(1.5);
+    public DateTimeOffset End { get; set; }
 }

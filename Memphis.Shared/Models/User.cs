@@ -24,7 +24,7 @@ public class User
     public bool CanRequestTraining { get; set; } = true;
     public Certification? Ground { get; set; }
     public Certification? Tower { get; set; }
-    public Certification? Radar { get; set; }
+    public Certification? Tracon { get; set; }
     public Certification? Center { get; set; }
     public ICollection<Role>? Roles { get; set; }
     public string? DiscordId { get; set; }

@@ -3,6 +3,7 @@ using System;
 using Memphis.Shared.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,13 +12,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Memphis.Shared.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20250203030102_Tracon")]
+    partial class Tracon
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.3")
+                .HasAnnotation("ProductVersion", "9.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -687,27 +690,13 @@ namespace Memphis.Shared.Migrations
                         new
                         {
                             Id = 11,
-                            Email = "events@memphisartcc.com",
-                            Name = "Events Team",
-                            NameShort = "EVENTS"
-                        },
-                        new
-                        {
-                            Id = 12,
-                            Email = "socialmedia@memphisartcc.com",
-                            Name = "Social Media Team",
-                            NameShort = "SOCIAL"
-                        },
-                        new
-                        {
-                            Id = 13,
                             Email = "instructors@memphisartcc.com",
                             Name = "Instructor",
                             NameShort = "INS"
                         },
                         new
                         {
-                            Id = 14,
+                            Id = 12,
                             Email = "mentors@memphisartcc.com",
                             Name = "Mentor",
                             NameShort = "MTR"
@@ -843,9 +832,6 @@ namespace Memphis.Shared.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("Track")
-                        .HasColumnType("integer");
-
                     b.Property<DateTimeOffset>("Updated")
                         .HasColumnType("timestamp with time zone");
 
@@ -863,9 +849,6 @@ namespace Memphis.Shared.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTimeOffset>("End")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("InstructorId")
                         .HasColumnType("integer");

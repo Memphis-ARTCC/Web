@@ -14,7 +14,7 @@ public class RosterUserDto
     public string? VisitorFrom { get; set; }
     public Certification? Ground { get; set; }
     public Certification? Tower { get; set; }
-    public Certification? Radar { get; set; }
+    public Certification? Tracon { get; set; }
     public Certification? Center { get; set; }
     public required IList<Role> Roles { get; set; }
 
@@ -31,7 +31,7 @@ public class RosterUserDto
             VisitorFrom = user.VisitorFrom,
             Ground = user.Ground,
             Tower = user.Tower,
-            Radar = user.Radar,
+            Tracon = user.Tracon,
             Center = user.Center,
             Roles = user.Roles?.ToList() ?? [],
         };

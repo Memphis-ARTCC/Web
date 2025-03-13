@@ -177,7 +177,7 @@ namespace Memphis.Jobs.ATC
                                 DeliveryHours = 0,
                                 GroundHours = 0,
                                 TowerHours = 0,
-                                ApproachHours = 0,
+                                TraconHours = 0,
                                 CenterHours = 0
                             });
                             await _context.SaveChangesAsync();
@@ -195,23 +195,23 @@ namespace Memphis.Jobs.ATC
 
                         if (entry.Callsign.EndsWith("DEL"))
                         {
-                            hours.DeliveryHours += entry.Duration.TotalHours;
+                            hours.DeliveryHours += Math.Round(entry.Duration.TotalHours, 2);
                         }
                         else if (entry.Callsign.EndsWith("GND"))
                         {
-                            hours.GroundHours += entry.Duration.TotalHours;
+                            hours.GroundHours += Math.Round(entry.Duration.TotalHours, 2);
                         }
                         else if (entry.Callsign.EndsWith("TWR"))
                         {
-                            hours.TowerHours += entry.Duration.TotalHours;
+                            hours.TowerHours += Math.Round(entry.Duration.TotalHours, 2);
                         }
                         else if (entry.Callsign.EndsWith("APP") || entry.Callsign.EndsWith("DEP"))
                         {
-                            hours.ApproachHours += entry.Duration.TotalHours;
+                            hours.TraconHours += Math.Round(entry.Duration.TotalHours, 2);
                         }
                         else if (entry.Callsign.EndsWith("CTR"))
                         {
-                            hours.CenterHours += entry.Duration.TotalHours;
+                            hours.CenterHours += Math.Round(entry.Duration.TotalHours, 2);
                         }
                         await _context.SaveChangesAsync();
                         removed++;
