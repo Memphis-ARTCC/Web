@@ -13,7 +13,7 @@ public class Hours
     public double DeliveryHours { get; set; }
     public double GroundHours { get; set; }
     public double TowerHours { get; set; }
-    public double ApproachHours { get; set; }
+    public double TraconHours { get; set; }
     public double CenterHours { get; set; }
-    public double TotalHours => DeliveryHours + GroundHours + TowerHours + ApproachHours + CenterHours;
+    public double TotalHours => DeliveryHours + GroundHours + TowerHours + TraconHours + CenterHours;
 }

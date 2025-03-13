@@ -46,7 +46,7 @@ public class UsersController : ControllerBase
                 .Include(x => x.Roles)
                 .Include(x => x.Ground)
                 .Include(x => x.Tower)
-                .Include(x => x.Radar)
+                .Include(x => x.Tracon)
                 .Include(x => x.Center)
                 .Where(x => x.Status != Shared.Enums.UserStatus.REMOVED)
                 .OrderBy(x => x.LastName)

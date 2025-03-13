@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Memphis.Shared.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace Memphis.Shared.Models;
 
@@ -6,6 +7,7 @@ namespace Memphis.Shared.Models;
 public class TrainingMilestone
 {
     public int Id { get; set; }
+    public required TrainingMilestoneTrack Track { get; set; }
     public required string Code { get; set; }
     public required string Name { get; set; }
     public required string Facility { get; set; }

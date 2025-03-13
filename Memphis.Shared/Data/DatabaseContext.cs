@@ -109,13 +109,27 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
         modelBuilder.Entity<Role>().HasData(new Role
         {
             Id = 11,
+            Name = "Events Team",
+            NameShort = "EVENTS",
+            Email = "events@memphisartcc.com"
+        });
+        modelBuilder.Entity<Role>().HasData(new Role
+        {
+            Id = 12,
+            Name = "Social Media Team",
+            NameShort = "SOCIAL",
+            Email = "socialmedia@memphisartcc.com"
+        });
+        modelBuilder.Entity<Role>().HasData(new Role
+        {
+            Id = 13,
             Name = "Instructor",
             NameShort = "INS",
             Email = "instructors@memphisartcc.com"
         });
         modelBuilder.Entity<Role>().HasData(new Role
         {
-            Id = 12,
+            Id = 14,
             Name = "Mentor",
             NameShort = "MTR",
             Email = "mentors@memphisartcc.com"
