@@ -1,6 +1,8 @@
+using Discord;
+using Discord.Webhook;
 using Memphis.Shared.Data;
-using Memphis.Shared.Enums;
 using Memphis.Shared.Models;
+using Memphis.Shared.Utils;
 using Memphis.Shared.Vatusa;
 using Microsoft.EntityFrameworkCore;
 using System.Net.Http.Json;
@@ -10,11 +12,14 @@ namespace Memphis.Jobs.Roster
     public class Worker : BackgroundService
     {
         private readonly DatabaseContext _context;
+        private readonly DiscordWebhookClient _rosterWebhook;
         private readonly ILogger<Worker> _logger;
 
         public Worker(DatabaseContext context, ILogger<Worker> logger)
         {
             _context = context;
+            _rosterWebhook = new DiscordWebhookClient(Environment.GetEnvironmentVariable("ROSTER_DISCORD_WEBHOOK") ??
+                throw new ArgumentNullException("ROSTER_DISCORD_WEBHOOK env variable not found"));
             _logger = logger;
         }
 
@@ -117,6 +122,34 @@ namespace Memphis.Jobs.Roster
                     if (wasUpdated)
                     {
                         _logger.LogInformation("{User} was updated", user.Id);
+                        var embed = new EmbedBuilder
+                        {
+                            Title = $"{user.FirstName} {user.LastName} was updated",
+                            Fields =
+                            {
+                                new EmbedFieldBuilder
+                                {
+                                    Name = "CID",
+                                    Value = user.Id,
+                                    IsInline = false
+                                },
+                                new EmbedFieldBuilder
+                                {
+                                    Name = "Email",
+                                    Value = user.Email,
+                                    IsInline = false
+                                },
+                                new EmbedFieldBuilder
+                                {
+                                    Name = "Rating",
+                                    Value = Helpers.GetRatingName(user.Rating),
+                                    IsInline = false
+                                }
+                            },
+                            Color = Color.Orange,
+                            Timestamp = DateTimeOffset.UtcNow
+                        };
+                        await _rosterWebhook.SendMessageAsync("", false, [embed.Build()]);
                         user.Updated = DateTime.UtcNow;
                         updatedCount++;
                         await _context.SaveChangesAsync();
@@ -139,7 +172,7 @@ namespace Memphis.Jobs.Roster
                         Email = user.Email,
                         Rating = user.Rating,
                         Joined = user.FacilityJoin,
-                        Status = UserStatus.ACTIVE,
+                        Status = Shared.Enums.UserStatus.ACTIVE,
                         Visitor = !user.Facility.Equals(facility, StringComparison.OrdinalIgnoreCase),
                         VisitorFrom = !user.Facility.Equals(facility, StringComparison.OrdinalIgnoreCase) ? user.Facility : null,
                         Roles = new List<Role>(),
@@ -148,6 +181,34 @@ namespace Memphis.Jobs.Roster
                     });
                     await _context.SaveChangesAsync();
                     addedCount++;
+                    var embed = new EmbedBuilder
+                    {
+                        Title = $"{user.FirstName} {user.LastName} was added",
+                        Fields =
+                            {
+                                new EmbedFieldBuilder
+                                {
+                                    Name = "CID",
+                                    Value = user.Cid,
+                                    IsInline = false
+                                },
+                                new EmbedFieldBuilder
+                                {
+                                    Name = "Email",
+                                    Value = user.Email,
+                                    IsInline = false
+                                },
+                                new EmbedFieldBuilder
+                                {
+                                    Name = "Rating",
+                                    Value = Helpers.GetRatingName(user.Rating),
+                                    IsInline = false
+                                }
+                            },
+                        Color = Color.Green,
+                        Timestamp = DateTimeOffset.UtcNow
+                    };
+                    await _rosterWebhook.SendMessageAsync("", false, [embed.Build()]);
                 }
                 _logger.LogInformation("Added {Count} users", addedCount);
 
@@ -158,6 +219,34 @@ namespace Memphis.Jobs.Roster
                     _context.Users.Remove(user);
                     await _context.SaveChangesAsync();
                     removedCount++;
+                    var embed = new EmbedBuilder
+                    {
+                        Title = $"{user.FirstName} {user.LastName} was removed",
+                        Fields =
+                            {
+                                new EmbedFieldBuilder
+                                {
+                                    Name = "CID",
+                                    Value = user.Id,
+                                    IsInline = false
+                                },
+                                new EmbedFieldBuilder
+                                {
+                                    Name = "Email",
+                                    Value = user.Email,
+                                    IsInline = false
+                                },
+                                new EmbedFieldBuilder
+                                {
+                                    Name = "Rating",
+                                    Value = Helpers.GetRatingName(user.Rating),
+                                    IsInline = false
+                                }
+                            },
+                        Color = Color.Red,
+                        Timestamp = DateTimeOffset.UtcNow
+                    };
+                    await _rosterWebhook.SendMessageAsync("", false, [embed.Build()]);
                 }
                 _logger.LogInformation("Removed {Count} users", removedCount);
 
