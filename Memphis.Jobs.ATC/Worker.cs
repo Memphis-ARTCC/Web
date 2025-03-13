@@ -69,7 +69,6 @@ namespace Memphis.Jobs.ATC
                     var existingSession = await _context.Sessions.Include(x => x.User)
                         .Where(x => x.User.Id == entry.Cid)
                         .Where(x => x.Callsign == entry.Callsign)
-                        .Where(x => x.Frequency == entry.Frequency)
                         .Where(x => x.Start == entry.LogonTime)
                         .Where(x => x.Duration == TimeSpan.Zero)
                         .FirstOrDefaultAsync();
@@ -155,8 +154,7 @@ namespace Memphis.Jobs.ATC
                 var onlineAtc = await _context.Sessions.Include(x => x.User).Where(x => x.Duration == TimeSpan.Zero).ToListAsync();
                 foreach (var entry in onlineAtc)
                 {
-                    if (!memphisAtc.Any(x => x.Callsign == entry.Callsign && x.Cid == entry.User.Id &&
-                        x.LogonTime == entry.Start && x.Frequency == entry.Frequency))
+                    if (!memphisAtc.Any(x => x.Callsign == entry.Callsign && x.Cid == entry.User.Id && x.LogonTime == entry.Start))
                     {
                         if ((DateTimeOffset.UtcNow - entry.End).TotalSeconds < 45)
                         {
