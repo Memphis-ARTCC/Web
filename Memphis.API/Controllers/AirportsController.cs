@@ -67,7 +67,27 @@ public class AirportsController : ControllerBase
 
             using var client = new HttpClient();
             var token = Environment.GetEnvironmentVariable("AVWX_API_KEY");
-            var metarResponse = await client.GetFromJsonAsync<Metar>($"https://avwx.rest/api/metar/{payload.Icao}?token={token}");
+            // make it do request and check status code, decode error if so
+            var metarResponseRaw = await client.GetAsync($"https://avwx.rest/api/metar/{payload.Icao}?token={token}");
+            if (!metarResponseRaw.IsSuccessStatusCode)
+            {
+                var error = JsonConvert.DeserializeObject<AvwxError>(await metarResponseRaw.Content.ReadAsStringAsync());
+                if (error != null)
+                {
+                    return StatusCode(500, new Response<string?>
+                    {
+                        StatusCode = 500,
+                        Message = $"Failed to get METAR data: {error.Error}"
+                    });
+                }
+                return StatusCode(500, new Response<string?>
+                {
+                    StatusCode = 500,
+                    Message = "Failed to get METAR data"
+                });
+            }
+
+            var metarResponse = JsonConvert.DeserializeObject<Metar>(await metarResponseRaw.Content.ReadAsStringAsync());
             if (metarResponse == null)
             {
                 return StatusCode(500, new Response<string?>
