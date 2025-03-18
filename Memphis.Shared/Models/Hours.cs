@@ -15,5 +15,5 @@ public class Hours
     public double TowerHours { get; set; }
     public double TraconHours { get; set; }
     public double CenterHours { get; set; }
-    public double TotalHours => DeliveryHours + GroundHours + TowerHours + TraconHours + CenterHours;
+    public double TotalHours => Math.Round(DeliveryHours + GroundHours + TowerHours + TraconHours + CenterHours, 2);
 }
