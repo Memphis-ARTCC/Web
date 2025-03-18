@@ -127,6 +127,14 @@ builder.Services.AddCors(options =>
             policy.AllowAnyHeader();
             policy.AllowAnyMethod();
         });
+    options.AddPolicy("Production",
+        policy =>
+        {
+            policy.WithOrigins(Environment.GetEnvironmentVariable("CORS_ORIGIN") ??
+                    throw new ArgumentNullException("CORS_ORIGIN env variable not found"))
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
 });
 
 var app = builder.Build();
@@ -150,6 +158,7 @@ else
     {
         ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
     });
+    app.UseCors("Production");
 }
 
 app.UseMetricServer();
