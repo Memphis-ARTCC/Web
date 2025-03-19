@@ -100,21 +100,24 @@ namespace Memphis.Jobs.Roster
                         wasUpdated = true;
                     }
 
-                    foreach (var role in apiUser.Roles)
+                    if (apiUser.Facility.Equals(facility, StringComparison.OrdinalIgnoreCase))
                     {
-                        user.Roles ??= new List<Role>();
-                        var existingRole = user.Roles?.FirstOrDefault(x => x.NameShort == role.Role);
-                        if (existingRole == null)
+                        foreach (var role in apiUser.Roles)
                         {
-                            var zmeRole = await _context.Roles.FirstOrDefaultAsync(x => x.NameShort == role.Role);
-                            if (zmeRole != null)
+                            user.Roles ??= new List<Role>();
+                            var existingRole = user.Roles?.FirstOrDefault(x => x.NameShort == role.Role);
+                            if (existingRole == null)
                             {
-                                user.Roles?.Add(zmeRole);
-                                wasUpdated = true;
-                            }
-                            else
-                            {
-                                _logger.LogWarning("Role {Role} not found in database, skipping", role.Role);
+                                var zmeRole = await _context.Roles.FirstOrDefaultAsync(x => x.NameShort == role.Role);
+                                if (zmeRole != null)
+                                {
+                                    user.Roles?.Add(zmeRole);
+                                    wasUpdated = true;
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("Role {Role} not found in database, skipping", role.Role);
+                                }
                             }
                         }
                     }

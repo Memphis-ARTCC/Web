@@ -3,7 +3,6 @@ using FluentValidation.Results;
 using Memphis.API.Extensions;
 using Memphis.API.Services;
 using Memphis.Shared.Data;
-using Memphis.Shared.Dtos.Avwx;
 using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
@@ -65,55 +64,10 @@ public class AirportsController : ControllerBase
                 });
             }
 
-            using var client = new HttpClient();
-            var token = Environment.GetEnvironmentVariable("AVWX_API_KEY");
-            // make it do request and check status code, decode error if so
-            var metarResponseRaw = await client.GetAsync($"https://avwx.rest/api/metar/{payload.Icao}?token={token}");
-            if (!metarResponseRaw.IsSuccessStatusCode)
-            {
-                var error = JsonConvert.DeserializeObject<AvwxError>(await metarResponseRaw.Content.ReadAsStringAsync());
-                if (error != null)
-                {
-                    return StatusCode(500, new Response<string?>
-                    {
-                        StatusCode = 500,
-                        Message = $"Failed to get METAR data: {error.Error}"
-                    });
-                }
-                return StatusCode(500, new Response<string?>
-                {
-                    StatusCode = 500,
-                    Message = "Failed to get METAR data"
-                });
-            }
-
-            var metarResponse = JsonConvert.DeserializeObject<Metar>(await metarResponseRaw.Content.ReadAsStringAsync());
-            if (metarResponse == null)
-            {
-                return StatusCode(500, new Response<string?>
-                {
-                    StatusCode = 500,
-                    Message = "Failed to get METAR data"
-                });
-            }
-
-            var wind = $"{metarResponse.WindSpeed.Repr}@{metarResponse.WindDirection.Repr}";
-            if (metarResponse.WindGust != null)
-            {
-                wind += $"G{metarResponse.WindGust.Repr}";
-            }
-            var altimeter = metarResponse.Altimeter.Repr.Replace("A", "").Insert(2, ".");
-
             var result = await _context.Airports.AddAsync(new Airport
             {
                 Name = payload.Name,
-                Icao = payload.Icao.ToUpper(),
-                Wind = wind,
-                Altimeter = altimeter,
-                Temperature = metarResponse.Temperature.Repr,
-                Visibility = metarResponse.Visibility.Repr,
-                FlightRules = metarResponse.FlightRules,
-                MetarRaw = metarResponse.Raw
+                Icao = payload.Icao.ToUpper()
             });
             await _context.SaveChangesAsync();
             string newData = JsonConvert.SerializeObject(result.Entity);
