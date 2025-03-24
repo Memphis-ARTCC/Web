@@ -12,6 +12,8 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
     public required DbSet<Event> Events { get; set; }
     public required DbSet<EventPosition> EventPositions { get; set; }
     public required DbSet<EventRegistration> EventRegistrations { get; set; }
+    public required DbSet<Exam> Exams { get; set; }
+    public required DbSet<ExamRequest> ExamRequests { get; set; }
     public required DbSet<Facility> Facilities { get; set; }
     public required DbSet<Feedback> Feedback { get; set; }
     public required DbSet<File> Files { get; set; }
@@ -24,6 +26,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
     public required DbSet<Session> Sessions { get; set; }
     public required DbSet<Settings> Settings { get; set; }
     public required DbSet<SoloCert> SoloCerts { get; set; }
+    public required DbSet<StaffingRequest> StaffingRequests { get; set; }
     public required DbSet<TrainingMilestone> TrainingMilestones { get; set; }
     public required DbSet<TrainingScheduleEntry> TrainingScheduleEntries { get; set; }
     public required DbSet<TrainingSchedule> TrainingSchedules { get; set; }
@@ -109,27 +112,41 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
         modelBuilder.Entity<Role>().HasData(new Role
         {
             Id = 11,
+            Name = "Web Team",
+            NameShort = "WEB",
+            Email = "web@memphisartcc.com"
+        });
+        modelBuilder.Entity<Role>().HasData(new Role
+        {
+            Id = 12,
             Name = "Events Team",
             NameShort = "EVENTS",
             Email = "events@memphisartcc.com"
         });
         modelBuilder.Entity<Role>().HasData(new Role
         {
-            Id = 12,
+            Id = 13,
+            Name = "Facilities Team",
+            NameShort = "FACILITIES",
+            Email = "facilities@memphisartcc.com"
+        });
+        modelBuilder.Entity<Role>().HasData(new Role
+        {
+            Id = 14,
             Name = "Social Media Team",
             NameShort = "SOCIAL",
             Email = "socialmedia@memphisartcc.com"
         });
         modelBuilder.Entity<Role>().HasData(new Role
         {
-            Id = 13,
+            Id = 15,
             Name = "Instructor",
             NameShort = "INS",
             Email = "instructors@memphisartcc.com"
         });
         modelBuilder.Entity<Role>().HasData(new Role
         {
-            Id = 14,
+            Id = 16,
             Name = "Mentor",
             NameShort = "MTR",
             Email = "mentors@memphisartcc.com"

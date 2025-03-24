@@ -1,4 +1,3 @@
-using Discord;
 using Discord.Webhook;
 using Memphis.Shared.Data;
 using Memphis.Shared.Datafeed;
@@ -15,6 +14,7 @@ namespace Memphis.Jobs.ATC
         private readonly IDatabase _redis;
         private readonly DiscordWebhookClient _onlineWebhook;
         private readonly DiscordWebhookClient _staffWebhook;
+        private readonly IList<string> _nonMemberControllers;
         private readonly ILogger<Worker> _logger;
 
         public Worker(DatabaseContext context, IDatabase redis, ILogger<Worker> logger)
@@ -25,6 +25,7 @@ namespace Memphis.Jobs.ATC
                 throw new ArgumentNullException("ONLINE_DISCORD_WEBHOOK env variable not found"));
             _staffWebhook = new DiscordWebhookClient(Environment.GetEnvironmentVariable("STAFF_DISCORD_WEBHOOK") ??
                 throw new ArgumentNullException("STAFF_DISCORD_WEBHOOK env variable not found"));
+            _nonMemberControllers = new List<string>();
             _logger = logger;
         }
 
@@ -63,6 +64,15 @@ namespace Memphis.Jobs.ATC
                     memphisAtc.AddRange(datafeed.Controllers.Where(x => x.Callsign.StartsWith(entry)));
                 }
 
+                // Update non artcc members list
+                foreach (var entry in _nonMemberControllers)
+                {
+                    if (!memphisAtc.Any(x => x.Callsign.Equals(entry, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        _nonMemberControllers.Remove(entry);
+                    }
+                }
+
                 // Handle updating existing sessions and adding new ones
                 foreach (var entry in memphisAtc)
                 {
@@ -78,28 +88,10 @@ namespace Memphis.Jobs.ATC
                         if (user == null)
                         {
                             _logger.LogError("Failed to find user {UserId}", entry.Cid);
-                            var embedNotFound = new EmbedBuilder
-                            {
-                                Title = $"{entry.Callsign} is online but not on roster!",
-                                Fields =
-                                {
-                                    new EmbedFieldBuilder
-                                    {
-                                        Name = "Name",
-                                        Value = entry.Name,
-                                        IsInline = true
-                                    },
-                                    new EmbedFieldBuilder
-                                    {
-                                        Name = "Cid",
-                                        Value = entry.Cid,
-                                        IsInline = true
-                                    }
-                                },
-                                Color = Color.Red,
-                                Timestamp = DateTimeOffset.UtcNow
-                            };
-                            await _staffWebhook.SendMessageAsync("", false, [embedNotFound.Build()]);
+                            await _staffWebhook.SendMessageAsync(
+                                $":alert: {entry.Name} is online controlling {entry.Callsign} but is not a member! :alert:", false
+                            );
+                            _nonMemberControllers.Add(entry.Callsign);
                             continue;
                         }
 
@@ -112,34 +104,7 @@ namespace Memphis.Jobs.ATC
                             Start = entry.LogonTime,
                             End = DateTimeOffset.UtcNow
                         });
-                        var embed = new EmbedBuilder
-                        {
-                            Title = $"{entry.Callsign} is online!",
-                            Fields =
-                            {
-                                new EmbedFieldBuilder
-                                {
-                                    Name = "Name",
-                                    Value = entry.Name,
-                                    IsInline = true
-                                },
-                                new EmbedFieldBuilder
-                                {
-                                    Name = "Cid",
-                                    Value = entry.Cid,
-                                    IsInline = true
-                                },
-                                new EmbedFieldBuilder
-                                {
-                                    Name = "Frequency",
-                                    Value = entry.Frequency,
-                                    IsInline = true
-                                }
-                            },
-                            Color = Color.Green,
-                            Timestamp = DateTimeOffset.UtcNow
-                        };
-                        await _onlineWebhook.SendMessageAsync("", false, [embed.Build()]);
+                        await _onlineWebhook.SendMessageAsync($":white_check_mark: {entry.Name} is online controlling {entry.Callsign}", false);
                         added++;
                     }
                     else
@@ -213,34 +178,7 @@ namespace Memphis.Jobs.ATC
                         }
                         await _context.SaveChangesAsync();
                         removed++;
-                        var embed = new EmbedBuilder
-                        {
-                            Title = $"{entry.Callsign} is offline!",
-                            Fields =
-                            {
-                                new EmbedFieldBuilder
-                                {
-                                    Name = "Name",
-                                    Value = entry.Name,
-                                    IsInline = true,
-                                },
-                                new EmbedFieldBuilder
-                                {
-                                    Name = "Cid",
-                                    Value = entry.User.Id,
-                                    IsInline = true
-                                },
-                                new EmbedFieldBuilder
-                                {
-                                    Name = "Duration",
-                                    Value = $"{Math.Round(entry.Duration.TotalHours, 2)} hours",
-                                    IsInline = true
-                                }
-                            },
-                            Color = Color.Red,
-                            Timestamp = DateTimeOffset.UtcNow
-                        };
-                        await _onlineWebhook.SendMessageAsync("", false, [embed.Build()]);
+                        await _onlineWebhook.SendMessageAsync($":x: {entry.Callsign} is now offline, {entry.Name} controlled for {entry.Duration}", false);
                     }
                 }
 
