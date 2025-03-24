@@ -109,6 +109,7 @@ builder.Services.AddScoped<IValidator<FeedbackPayload>, FeedbackValidator>();
 builder.Services.AddScoped<IValidator<FilePayload>, FileValidator>();
 builder.Services.AddScoped<IValidator<NewsPayload>, NewsValidator>();
 builder.Services.AddScoped<IValidator<OtsPayload>, OtsValidator>();
+builder.Services.AddScoped<IValidator<StaffingRequestPayload>, StaffingRequestValidator>();
 builder.Services.AddScoped<IValidator<TrainingMilestone>, TrainingMilestoneValidator>();
 builder.Services.AddScoped<IValidator<TrainingScheduleDto>, TrainingScheduleValidator>();
 builder.Services.AddScoped<IValidator<UserPayload>, UserValidator>();
