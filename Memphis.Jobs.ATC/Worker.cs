@@ -89,7 +89,7 @@ namespace Memphis.Jobs.ATC
                         {
                             _logger.LogError("Failed to find user {UserId}", entry.Cid);
                             await _staffWebhook.SendMessageAsync(
-                                $":alert: {entry.Name} is online controlling {entry.Callsign} but is not a member! :alert:", false
+                                $":alert: **{entry.Name}** is online controlling **{entry.Callsign}** but is not a member! :alert:", false
                             );
                             _nonMemberControllers.Add(entry.Callsign);
                             continue;
@@ -104,7 +104,7 @@ namespace Memphis.Jobs.ATC
                             Start = entry.LogonTime,
                             End = DateTimeOffset.UtcNow
                         });
-                        await _onlineWebhook.SendMessageAsync($":white_check_mark: {entry.Name} is online controlling {entry.Callsign}", false);
+                        await _onlineWebhook.SendMessageAsync($":white_check_mark: **{entry.Name}** is online controlling **{entry.Callsign}**", false);
                         added++;
                     }
                     else
@@ -178,7 +178,7 @@ namespace Memphis.Jobs.ATC
                         }
                         await _context.SaveChangesAsync();
                         removed++;
-                        await _onlineWebhook.SendMessageAsync($":x: {entry.Callsign} is now offline, {entry.Name} controlled for {entry.Duration}", false);
+                        await _onlineWebhook.SendMessageAsync($":x: **{entry.Callsign}** is now offline, **{entry.Name}** controlled for **{entry.Duration.TotalHours}**", false);
                     }
                 }
 

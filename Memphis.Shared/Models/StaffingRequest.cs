@@ -11,3 +11,14 @@ public class StaffingRequest
     public DateTimeOffset Start { get; set; }
     public TimeSpan Duration { get; set; }
 }
+
+public class StaffingRequestPayload
+{
+    public int Cid { get; set; }
+    public required string FullName { get; set; }
+    public required string Email { get; set; }
+    public required string Organization { get; set; }
+    public int EstimatedPilots { get; set; }
+    public DateTimeOffset Start { get; set; }
+    public TimeSpan Duration { get; set; }
+}
