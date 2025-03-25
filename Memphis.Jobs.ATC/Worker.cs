@@ -110,6 +110,7 @@ namespace Memphis.Jobs.ATC
                     else
                     {
                         existingSession.End = DateTimeOffset.UtcNow;
+                        existingSession.Frequency = entry.Frequency;
                         updated++;
                     }
                     await _context.SaveChangesAsync();
@@ -178,7 +179,7 @@ namespace Memphis.Jobs.ATC
                         }
                         await _context.SaveChangesAsync();
                         removed++;
-                        await _onlineWebhook.SendMessageAsync($":x: **{entry.Callsign}** is now offline, **{entry.Name}** controlled for **{entry.Duration.TotalHours}**", false);
+                        await _onlineWebhook.SendMessageAsync($":x: **{entry.Callsign}** is now offline, **{entry.Name}** controlled for **{Math.Round(entry.Duration.TotalHours, 2)}**", false);
                     }
                 }
 
