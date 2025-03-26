@@ -159,27 +159,27 @@ namespace Memphis.Jobs.ATC
 
                         if (entry.Callsign.EndsWith("DEL"))
                         {
-                            hours.DeliveryHours += Math.Round(entry.Duration.TotalHours, 2);
+                            hours.DeliveryHours += entry.Duration.TotalHours;
                         }
                         else if (entry.Callsign.EndsWith("GND"))
                         {
-                            hours.GroundHours += Math.Round(entry.Duration.TotalHours, 2);
+                            hours.GroundHours += entry.Duration.TotalHours;
                         }
                         else if (entry.Callsign.EndsWith("TWR"))
                         {
-                            hours.TowerHours += Math.Round(entry.Duration.TotalHours, 2);
+                            hours.TowerHours += entry.Duration.TotalHours;
                         }
                         else if (entry.Callsign.EndsWith("APP") || entry.Callsign.EndsWith("DEP"))
                         {
-                            hours.TraconHours += Math.Round(entry.Duration.TotalHours, 2);
+                            hours.TraconHours += entry.Duration.TotalHours;
                         }
                         else if (entry.Callsign.EndsWith("CTR"))
                         {
-                            hours.CenterHours += Math.Round(entry.Duration.TotalHours, 2);
+                            hours.CenterHours += entry.Duration.TotalHours;
                         }
                         await _context.SaveChangesAsync();
                         removed++;
-                        await _onlineWebhook.SendMessageAsync($":x: **{entry.Callsign}** is now offline, **{entry.Name}** controlled for **{Math.Round(entry.Duration.TotalHours, 2)}**", false);
+                        await _onlineWebhook.SendMessageAsync($":x: **{entry.Callsign}** is now offline, **{entry.Name}** controlled for **{Math.Round(entry.Duration.TotalHours, 2)}** hours", false);
                     }
                 }
 
