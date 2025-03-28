@@ -71,7 +71,7 @@ namespace Memphis.Jobs.Airports
                     airport.Departures = departures;
                     airport.FlightRules = body.FlightRules;
                     airport.Visibility = body.Visibility.Repr;
-                    var winds = $"{body.WindDirection.Repr}° at {body.WindSpeed.Repr}";
+                    var winds = $"{body.WindDirection.Repr}&deg; at {body.WindSpeed.Repr}";
                     if (body.WindGust != null)
                     {
                         winds += $" Gusting {body.WindGust.Repr}";
