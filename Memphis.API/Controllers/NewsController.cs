@@ -76,7 +76,7 @@ public class NewsController : ControllerBase
             {
                 Title = payload.Title,
                 Content = payload.Content,
-                Author = user,
+                Author = $"{user.FirstName} {user.LastName}",
             });
             await _context.SaveChangesAsync();
             string newData = JsonConvert.SerializeObject(result.Entity);
@@ -103,8 +103,7 @@ public class NewsController : ControllerBase
     {
         try
         {
-            var result = await _context.News
-                .Include(x => x.Author).OrderBy(x => x.Created)
+            var result = await _context.News.OrderBy(x => x.Created)
                 .Skip((page - 1) * size).ToListAsync();
             return Ok(new Response<IList<News>>
             {

@@ -2,7 +2,12 @@
 
 public enum FileType
 {
-    ALL,
+    POLICY,
+    SOP,
+    LOA,
+    REFERENCE,
+    MISC,
+    CLIENT,
     TRAINING_STAFF,
     STAFF,
     SENIOR_STAFF
