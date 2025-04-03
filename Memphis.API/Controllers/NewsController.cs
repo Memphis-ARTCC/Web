@@ -103,7 +103,7 @@ public class NewsController : ControllerBase
     {
         try
         {
-            var result = await _context.News.OrderBy(x => x.Created)
+            var result = await _context.News.OrderBy(x => x.Updated)
                 .Skip((page - 1) * size).ToListAsync();
             return Ok(new Response<IList<News>>
             {
