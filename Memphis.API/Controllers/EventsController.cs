@@ -39,7 +39,7 @@ public class EventsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = Constants.CanEvents)]
+    [Authorize(Roles = Constants.EventsStaff)]
     [ProducesResponseType(typeof(Response<Comment>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
@@ -49,7 +49,7 @@ public class EventsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.EventsStaffList))
             {
                 return StatusCode(401);
             }
@@ -119,7 +119,7 @@ public class EventsController : ControllerBase
     {
         try
         {
-            var getClosed = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList);
+            var getClosed = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.FullStaffList);
             if (getClosed)
             {
                 var result = await _context.Events
@@ -169,7 +169,7 @@ public class EventsController : ControllerBase
     {
         try
         {
-            var getClosed = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList);
+            var getClosed = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.FullStaffList);
             var result = await _context.Events.FindAsync(eventId);
             if (result == null)
             {
@@ -204,7 +204,7 @@ public class EventsController : ControllerBase
     }
 
     [HttpPut("{eventId:int}")]
-    [Authorize(Roles = Constants.CanEvents)]
+    [Authorize(Roles = Constants.EventsStaff)]
     [ProducesResponseType(typeof(Response<Event>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
@@ -215,7 +215,7 @@ public class EventsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.EventsStaffList))
             {
                 return StatusCode(401);
             }
@@ -282,7 +282,7 @@ public class EventsController : ControllerBase
 
 
     [HttpDelete("{eventId:int}")]
-    [Authorize(Roles = Constants.CanEvents)]
+    [Authorize(Roles = Constants.EventsStaff)]
     [ProducesResponseType(typeof(Response<string?>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -292,7 +292,7 @@ public class EventsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.EventsStaffList))
             {
                 return StatusCode(401);
             }

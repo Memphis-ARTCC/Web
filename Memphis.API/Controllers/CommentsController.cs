@@ -37,7 +37,7 @@ public class CommentsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = Constants.CanComment)]
+    [Authorize(Roles = Constants.AllStaff)]
     [ProducesResponseType(typeof(Response<Comment>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
@@ -48,13 +48,7 @@ public class CommentsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentList))
-            {
-                return StatusCode(401);
-            }
-
-            // Check if they can add a confidential comment
-            if (payload.Confidential && !await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentConfidentialList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList))
             {
                 return StatusCode(401);
             }
@@ -96,7 +90,6 @@ public class CommentsController : ControllerBase
             {
                 User = user,
                 Submitter = submitter,
-                Confidential = payload.Confidential,
                 Message = payload.Message,
             });
             await _context.SaveChangesAsync();
@@ -119,7 +112,7 @@ public class CommentsController : ControllerBase
     }
 
     [HttpGet("{userId:int}")]
-    [Authorize(Roles = $"{Constants.CanComment},{Constants.CanCommentConfidential}")]
+    [Authorize(Roles = Constants.AllStaff)]
     [ProducesResponseType(typeof(ResponsePaging<IList<Comment>>), 200)]
     [ProducesResponseType(typeof(Response<string?>), 400)]
     [ProducesResponseType(401)]
@@ -159,48 +152,22 @@ public class CommentsController : ControllerBase
                 });
             }
 
-            if (await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentConfidentialList))
+            var result = await _context.Comments
+                .Where(x => x.User == user)
+                .OrderBy(x => x.Timestamp)
+                .Skip((page - 1) * size).Take(size)
+                .ToListAsync();
+            var totalCount = await _context.Comments
+                .Where(x => x.User == user)
+                .OrderBy(x => x.Timestamp).CountAsync();
+            return Ok(new ResponsePaging<IList<Comment>>
             {
-                var confidentialResult = await _context.Comments
-                    .Where(x => x.User == user)
-                    .OrderBy(x => x.Timestamp)
-                    .Skip((page - 1) * size).Take(size)
-                    .ToListAsync();
-                var confidentialTotalCount = await _context.Comments
-                    .Where(x => x.User == user).CountAsync();
-                return Ok(new ResponsePaging<IList<Comment>>
-                {
-                    StatusCode = 200,
-                    ResultCount = confidentialResult.Count,
-                    TotalCount = confidentialTotalCount,
-                    Message = $"Got {confidentialResult.Count} comments",
-                    Data = confidentialResult
-                });
-            }
-
-            if (await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanCommentList))
-            {
-                var result = await _context.Comments
-                    .Where(x => x.User == user)
-                    .Where(x => !x.Confidential)
-                    .OrderBy(x => x.Timestamp)
-                    .Skip((page - 1) * size).Take(size)
-                    .ToListAsync();
-                var totalCount = await _context.Comments
-                    .Where(x => x.User == user)
-                    .Where(x => !x.Confidential)
-                    .OrderBy(x => x.Timestamp).CountAsync();
-                return Ok(new ResponsePaging<IList<Comment>>
-                {
-                    StatusCode = 200,
-                    ResultCount = result.Count,
-                    TotalCount = totalCount,
-                    Message = $"Got {result.Count} comments",
-                    Data = result
-                });
-            }
-
-            return StatusCode(401);
+                StatusCode = 200,
+                ResultCount = result.Count,
+                TotalCount = totalCount,
+                Message = $"Got {result.Count} comments",
+                Data = result
+            });
         }
         catch (Exception ex)
         {

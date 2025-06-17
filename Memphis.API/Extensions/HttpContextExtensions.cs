@@ -64,12 +64,12 @@ public static class HttpContextExtensions
 
     public static async Task<bool> IsAllStaff(this HttpContext httpContext, RedisService redisService)
     {
-        return await redisService.ValidateRoles(httpContext.User, Constants.AllStaffList);
+        return await redisService.ValidateRoles(httpContext.User, Constants.FullStaffList);
     }
 
     public static async Task<bool> IsFullStaff(this HttpContext httpContext, RedisService redisService)
     {
-        return await redisService.ValidateRoles(httpContext.User, Constants.FullStaffList);
+        return await redisService.ValidateRoles(httpContext.User, Constants.MainStaffList);
     }
 
     public static async Task<bool> IsSeniorStaff(this HttpContext httpContext, RedisService redisService)

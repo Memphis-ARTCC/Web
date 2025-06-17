@@ -77,7 +77,7 @@ public class SessionsController : ControllerBase
     }
 
     [HttpGet("{userId:int}")]
-    [Authorize(Roles = Constants.AllStaff)]
+    [Authorize(Roles = Constants.FullStaff)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<IList<Session>>), 200)]
@@ -86,6 +86,11 @@ public class SessionsController : ControllerBase
     {
         try
         {
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.FullStaffList))
+            {
+                return StatusCode(401);
+            }
+
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
             {

@@ -38,7 +38,7 @@ public class AirportsController : ControllerBase
 
 
     [HttpPost]
-    [Authorize(Roles = Constants.CanAirports)]
+    [Authorize(Roles = Constants.FacilitiesStaff)]
     [ProducesResponseType(typeof(Response<Airport>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
@@ -48,7 +48,7 @@ public class AirportsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.FacilitiesStaffList))
             {
                 return StatusCode(401);
             }
@@ -70,7 +70,7 @@ public class AirportsController : ControllerBase
                 Icao = payload.Icao.ToUpper()
             });
             await _context.SaveChangesAsync();
-            string newData = JsonConvert.SerializeObject(result.Entity);
+            var newData = JsonConvert.SerializeObject(result.Entity);
             await _loggingService.AddWebsiteLog(Request, $"Created airport {result.Entity.Id}", string.Empty, newData);
 
             return StatusCode(201, new Response<Airport>
@@ -143,7 +143,7 @@ public class AirportsController : ControllerBase
     }
 
     [HttpPut("{airportId:int}")]
-    [Authorize(Roles = Constants.CanAirports)]
+    [Authorize(Roles = Constants.FacilitiesStaff)]
     [ProducesResponseType(typeof(Response<Airport>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
@@ -154,7 +154,7 @@ public class AirportsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.FacilitiesStaffList))
             {
                 return StatusCode(401);
             }
@@ -204,7 +204,7 @@ public class AirportsController : ControllerBase
     }
 
     [HttpDelete("{airportId:int}")]
-    [Authorize(Roles = Constants.CanAirports)]
+    [Authorize(Roles = Constants.FacilitiesStaff)]
     [ProducesResponseType(typeof(Response<string?>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -214,7 +214,7 @@ public class AirportsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanAirportsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.FacilitiesStaffList))
             {
                 return StatusCode(401);
             }

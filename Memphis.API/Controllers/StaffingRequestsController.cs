@@ -3,10 +3,13 @@ using FluentValidation.Results;
 using Memphis.API.Extensions;
 using Memphis.API.Services;
 using Memphis.Shared.Data;
+using Memphis.Shared.Dtos;
+using Memphis.Shared.Enums;
 using Memphis.Shared.Models;
 using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
 namespace Memphis.API.Controllers;
@@ -81,6 +84,39 @@ public class StaffingRequestsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError("CreateStaffingRequest error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
+        }
+    }
+
+    [HttpGet]
+    [Authorize(Roles = Constants.FacilitiesStaff)]
+    [ProducesResponseType(typeof(Response<StatsDto>), 200)]
+    [ProducesResponseType(typeof(Response<string?>), 400)]
+    [ProducesResponseType(typeof(Response<string?>), 500)]
+    public async Task<ActionResult<Response<IList<StaffingRequest>>>> GetStaffingRequests(StaffingRequestStatus status)
+    {
+        try
+        {
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.FacilitiesStaffList))
+            {
+                return StatusCode(401);
+            }
+
+            var result = await _context.StaffingRequests
+                .Where(x => x.Status == status)
+                .OrderByDescending(x => x.Timetstamp)
+                .ToListAsync();
+
+            return Ok(new Response<IList<StaffingRequest>>
+            {
+                StatusCode = 200,
+                Message = $"Got {result.Count} staffing requests",
+                Data = result
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("GetStaffingRequests error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
             return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }

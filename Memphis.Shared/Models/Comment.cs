@@ -5,7 +5,6 @@ public class Comment
     public int Id { get; set; }
     public required User User { get; set; }
     public required User Submitter { get; set; }
-    public bool Confidential { get; set; }
     public required string Message { get; set; }
     public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
 }
@@ -13,6 +12,5 @@ public class Comment
 public class CommentPayload
 {
     public int UserId { get; set; }
-    public bool Confidential { get; set; }
     public required string Message { get; set; }
 }

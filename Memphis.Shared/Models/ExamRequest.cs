@@ -12,3 +12,10 @@ public class ExamRequest
     public ExamRequestStatus Status { get; set; } = ExamRequestStatus.PENDING;
     public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
 }
+
+public class ExamRequestPayload
+{
+    public int StudentId { get; set; }
+    public int ExamId { get; set; }
+    public required string Reason { get; set; }
+}

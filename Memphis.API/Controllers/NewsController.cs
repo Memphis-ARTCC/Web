@@ -36,7 +36,7 @@ public class NewsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = Constants.FullStaff)]
+    [Authorize(Roles = Constants.MainStaff)]
     [ProducesResponseType(typeof(Response<News>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
@@ -47,7 +47,7 @@ public class NewsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.FullStaffList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.MainStaffList))
             {
                 return StatusCode(401);
             }
@@ -153,7 +153,7 @@ public class NewsController : ControllerBase
     }
 
     [HttpPut("{newsId:int}")]
-    [Authorize(Roles = Constants.FullStaff)]
+    [Authorize(Roles = Constants.MainStaff)]
     [ProducesResponseType(typeof(Response<News>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
@@ -164,7 +164,7 @@ public class NewsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.FullStaffList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.MainStaffList))
             {
                 return StatusCode(401);
             }
@@ -214,7 +214,7 @@ public class NewsController : ControllerBase
     }
 
     [HttpDelete("{newsId:int}")]
-    [Authorize(Roles = Constants.FullStaff)]
+    [Authorize(Roles = Constants.MainStaff)]
     [ProducesResponseType(typeof(Response<string?>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -224,7 +224,7 @@ public class NewsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.FullStaffList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.MainStaffList))
             {
                 return StatusCode(401);
             }
