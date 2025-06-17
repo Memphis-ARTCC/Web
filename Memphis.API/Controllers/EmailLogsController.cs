@@ -30,14 +30,14 @@ public class EmailLogsController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = Constants.CanEmailLogs)]
+    [Authorize(Roles = Constants.SeniorStaff)]
     [ProducesResponseType(typeof(Response<IList<EmailLog>>), 200)]
     [ProducesResponseType(typeof(Response<string?>), 500)]
     public async Task<ActionResult<ResponsePaging<IList<EmailLog>>>> GetEmailLogs(int page, int size, string? to = null)
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEmailLogsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList))
             {
                 return StatusCode(401);
             }

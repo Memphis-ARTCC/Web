@@ -35,7 +35,7 @@ public class OtsController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = Constants.CanOts)]
+    [Authorize(Roles = Constants.SeniorTrainingStaff)]
     [ProducesResponseType(typeof(ResponsePaging<IList<OtsDto>>), 201)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -44,7 +44,7 @@ public class OtsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanOtsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorTrainingStaffList))
             {
                 return StatusCode(401);
             }
@@ -90,7 +90,7 @@ public class OtsController : ControllerBase
     }
 
     [HttpGet("{otsId:int}")]
-    [Authorize(Roles = Constants.CanOts)]
+    [Authorize(Roles = Constants.SeniorTrainingStaff)]
     [ProducesResponseType(typeof(ResponsePaging<IList<OtsDto>>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -100,7 +100,7 @@ public class OtsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanOtsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorTrainingStaffList))
             {
                 return StatusCode(401);
             }
@@ -134,7 +134,7 @@ public class OtsController : ControllerBase
     }
 
     [HttpPut]
-    [Authorize(Roles = Constants.CanOts)]
+    [Authorize(Roles = Constants.SeniorTrainingStaff)]
     [ProducesResponseType(typeof(Response<OtsDto>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
@@ -145,7 +145,7 @@ public class OtsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanOtsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorTrainingStaffList))
             {
                 return StatusCode(401);
             }
@@ -218,7 +218,7 @@ public class OtsController : ControllerBase
     }
 
     [HttpDelete("{otsId:int}")]
-    [Authorize(Roles = Constants.CanOts)]
+    [Authorize(Roles = Constants.SeniorTrainingStaff)]
     [ProducesResponseType(typeof(Response<string?>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]

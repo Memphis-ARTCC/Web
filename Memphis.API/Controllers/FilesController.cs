@@ -41,7 +41,7 @@ public class FilesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = Constants.CanFiles)]
+    [Authorize(Roles = Constants.FacilitiesStaff)]
     [ProducesResponseType(typeof(Response<File>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
@@ -52,7 +52,7 @@ public class FilesController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFilesList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.FacilitiesStaffList))
             {
                 return StatusCode(401);
             }
@@ -121,7 +121,7 @@ public class FilesController : ControllerBase
     {
         try
         {
-            var isStaff = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList);
+            var isStaff = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.FullStaffList);
             var isSeniorStaff = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList);
             var isTrainingStaff = await _redisService.ValidateRoles(Request.HttpContext.User, Constants.TrainingStaffList);
             var resultQuery = _context.Files.AsQueryable();
@@ -190,7 +190,7 @@ public class FilesController : ControllerBase
     }
 
     [HttpPut("{fileId:int}")]
-    [Authorize(Roles = Constants.CanFiles)]
+    [Authorize(Roles = Constants.FacilitiesStaff)]
     [ProducesResponseType(typeof(Response<File>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
@@ -201,7 +201,7 @@ public class FilesController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFilesList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.FacilitiesStaffList))
             {
                 return StatusCode(401);
             }

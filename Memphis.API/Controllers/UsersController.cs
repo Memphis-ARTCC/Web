@@ -1,4 +1,5 @@
 ﻿using FluentValidation;
+using FluentValidation.Results;
 using Memphis.API.Extensions;
 using Memphis.API.Services;
 using Memphis.Shared.Data;
@@ -8,6 +9,7 @@ using Memphis.Shared.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 
 namespace Memphis.API.Controllers;
 
@@ -19,19 +21,94 @@ public class UsersController : ControllerBase
     private readonly DatabaseContext _context;
     private readonly RedisService _redisService;
     private readonly LoggingService _loggingService;
-    public readonly IValidator<UserPayload> _validator;
+    private readonly IValidator<UserPayload> _userValidator;
+    private readonly IValidator<CommentPayload> _commentValidator;
     private readonly ISentryClient _sentryHub;
     private readonly ILogger<UsersController> _logger;
 
     public UsersController(DatabaseContext context, RedisService redisService, LoggingService loggingService,
-        IValidator<UserPayload> validator, ISentryClient sentryHub, ILogger<UsersController> logger)
+        IValidator<UserPayload> validator, IValidator<CommentPayload> commentValidator, ISentryClient sentryHub, ILogger<UsersController> logger)
     {
         _context = context;
         _redisService = redisService;
         _loggingService = loggingService;
-        _validator = validator;
+        _userValidator = validator;
+        _commentValidator = commentValidator;
         _sentryHub = sentryHub;
         _logger = logger;
+    }
+
+    [HttpPost]
+    [Authorize(Roles = Constants.SeniorStaff)]
+    [ProducesResponseType(typeof(Response<Comment>), 201)]
+    [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(typeof(Response<string?>), 500)]
+    public async Task<ActionResult<Response<Comment>>> AddComment(int userId, CommentPayload payload)
+    {
+        try
+        {
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList))
+            {
+                return StatusCode(401);
+            }
+
+            var validation = await _commentValidator.ValidateAsync(payload);
+            if (!validation.IsValid)
+            {
+                return BadRequest(new Response<IList<ValidationFailure>>
+                {
+                    StatusCode = 400,
+                    Message = "Validation failure",
+                    Data = validation.Errors
+                });
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(x => x.Id == userId);
+            if (user == null)
+            {
+                return NotFound(new Response<int>
+                {
+                    StatusCode = 404,
+                    Message = "User not found",
+                    Data = userId
+                });
+            }
+
+            var submitter = await HttpContext.GetUser(_context);
+            if (submitter == null)
+            {
+                return NotFound(new Response<string?>
+                {
+                    StatusCode = 404,
+                    Message = "User not found"
+                });
+            }
+
+            var result = await _context.Comments.AddAsync(new Comment
+            {
+                User = user,
+                Submitter = submitter,
+                Message = payload.Message,
+            });
+            await _context.SaveChangesAsync();
+            var newData = JsonConvert.SerializeObject(result.Entity);
+            await _loggingService.AddWebsiteLog(Request, $"Added comment to user '{user.Id}'", string.Empty, newData);
+
+            return StatusCode(201, new Response<Comment>
+            {
+                StatusCode = 201,
+                Message = $"Added comment to user '{user.Id}'",
+                Data = result.Entity
+            });
+
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("AddComment error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
+        }
     }
 
     [HttpGet("Roster")]
@@ -133,6 +210,182 @@ public class UsersController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError("GetStaff error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
+        }
+    }
+
+    [HttpGet("roles")]
+    [Authorize(Roles = Constants.AllStaff)]
+    [ProducesResponseType(typeof(Response<IList<Role>>), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(typeof(Response<int>), 404)]
+    [ProducesResponseType(typeof(Response<string?>), 500)]
+    public async Task<ActionResult<Response<IList<Role>>>> GetRoles()
+    {
+        try
+        {
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList))
+            {
+                return StatusCode(401);
+            }
+
+            var roles = await _context.Roles.ToListAsync();
+
+            return Ok(new Response<IList<Role>>
+            {
+                StatusCode = 200,
+                Message = $"Got {roles.Count} roles",
+                Data = roles
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("GetRoles error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
+        }
+    }
+
+    [HttpPut("roles/add/{userId:int}")]
+    [Authorize(Roles = Constants.SeniorStaff)]
+    [ProducesResponseType(typeof(Response<IList<Role>>), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(typeof(Response<int>), 404)]
+    [ProducesResponseType(typeof(Response<string?>), 500)]
+    public async Task<ActionResult<Response<IList<Role>>>> AddRole(int userId, int roleId)
+    {
+        try
+        {
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList))
+            {
+                return StatusCode(401);
+            }
+
+            var user = await _context.Users
+                .Include(x => x.Roles)
+                .FirstOrDefaultAsync(x => x.Id == userId);
+            if (user == null)
+            {
+                return NotFound(new Response<int>
+                {
+                    StatusCode = 404,
+                    Message = "User not found",
+                    Data = userId
+                });
+            }
+
+            var role = await _context.Roles
+                .FirstOrDefaultAsync(x => x.Id == roleId);
+            if (role == null)
+            {
+                return NotFound(new Response<int>
+                {
+                    StatusCode = 404,
+                    Message = "Role not found",
+                    Data = roleId
+                });
+            }
+
+            user.Roles ??= [];
+
+            if (user.Roles.Any(x => x.Id == roleId))
+            {
+                return Ok(new Response<IList<Role>>
+                {
+                    StatusCode = 200,
+                    Message = "Role already assigned to user",
+                    Data = user.Roles?.ToList()
+                });
+            }
+
+            var oldData = JsonConvert.SerializeObject(user.Roles);
+            user.Roles.Add(role);
+            await _context.SaveChangesAsync();
+            var newData = JsonConvert.SerializeObject(user.Roles);
+            await _loggingService.AddWebsiteLog(Request, $"Added Role '{role.Name}' to user '{user.Id}'", oldData, newData);
+
+            return Ok(new Response<IList<Role>>
+            {
+                StatusCode = 200,
+                Message = $"Added role '{role.Name}' to user '{user.Id}'",
+                Data = user.Roles.ToList()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("AddRole error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            return _sentryHub.CaptureException(ex).ReturnActionResult();
+        }
+    }
+
+    [HttpPut("roles/remove/{userId:int}")]
+    [Authorize(Roles = Constants.SeniorStaff)]
+    [ProducesResponseType(typeof(Response<IList<Role>>), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(typeof(Response<int>), 404)]
+    [ProducesResponseType(typeof(Response<string?>), 500)]
+    public async Task<ActionResult<Response<IList<Role>>>> RemoveRole(int userId, int roleId)
+    {
+        try
+        {
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorStaffList))
+            {
+                return StatusCode(401);
+            }
+
+            var user = await _context.Users
+                .Include(x => x.Roles)
+                .FirstOrDefaultAsync(x => x.Id == userId);
+            if (user == null)
+            {
+                return NotFound(new Response<int>
+                {
+                    StatusCode = 404,
+                    Message = "User not found",
+                    Data = userId
+                });
+            }
+
+            var role = await _context.Roles
+                .FirstOrDefaultAsync(x => x.Id == roleId);
+            if (role == null)
+            {
+                return NotFound(new Response<int>
+                {
+                    StatusCode = 404,
+                    Message = "Role not found",
+                    Data = roleId
+                });
+            }
+
+            if (user.Roles == null || !user.Roles.Any(x => x.Id == roleId))
+            {
+                return Ok(new Response<IList<Role>>
+                {
+                    StatusCode = 200,
+                    Message = "Role not assigned to user",
+                    Data = user.Roles?.ToList()
+                });
+            }
+
+            var oldData = JsonConvert.SerializeObject(user.Roles);
+            user.Roles.Remove(role);
+            await _context.SaveChangesAsync();
+            var newData = JsonConvert.SerializeObject(user.Roles);
+            await _loggingService.AddWebsiteLog(Request, $"Removed Role '{role.Name}' from user '{user.Id}'", oldData, newData);
+
+            return Ok(new Response<IList<Role>>
+            {
+                StatusCode = 200,
+                Message = $"Removed role '{role.Name}' from user '{user.Id}'",
+                Data = user.Roles.ToList()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("AddRole error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
             return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }

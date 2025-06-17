@@ -28,7 +28,7 @@ public class TransferRequestsController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = $"{Constants.SeniorStaff},")]
+    [Authorize(Roles = Constants.SeniorStaff)]
     [ProducesResponseType(typeof(Response<IList<TransferRequest>>), 200)]
     [ProducesResponseType(typeof(Response<string?>), 400)]
     [ProducesResponseType(401)]

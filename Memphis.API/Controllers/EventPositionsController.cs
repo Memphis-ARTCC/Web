@@ -37,7 +37,7 @@ public class EventPositionsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = Constants.CanEvents)]
+    [Authorize(Roles = Constants.EventsStaff)]
     [ProducesResponseType(typeof(Response<EventPosition>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
@@ -48,7 +48,7 @@ public class EventPositionsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.EventsStaffList))
             {
                 return StatusCode(401);
             }
@@ -119,7 +119,7 @@ public class EventPositionsController : ControllerBase
                 });
             }
 
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.AllStaffList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.FullStaffList))
             {
                 if (!@event.IsOpen)
                 {
@@ -157,7 +157,7 @@ public class EventPositionsController : ControllerBase
     }
 
     [HttpDelete("Positions/{eventPositionId:int}")]
-    [Authorize(Roles = Constants.CanEvents)]
+    [Authorize(Roles = Constants.EventsStaff)]
     [ProducesResponseType(typeof(Response<string?>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -167,7 +167,7 @@ public class EventPositionsController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.EventsStaffList))
             {
                 return StatusCode(401);
             }

@@ -272,7 +272,7 @@ public class EventRegistrationController : ControllerBase
     }
 
     [HttpGet("Registrations/{eventId:int}")]
-    [Authorize(Roles = Constants.CanEvents)]
+    [Authorize(Roles = Constants.EventsStaff)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<IList<EventRegistration>>), 200)]
@@ -282,7 +282,7 @@ public class EventRegistrationController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.EventsStaffList))
             {
                 return StatusCode(401);
             }
@@ -313,7 +313,7 @@ public class EventRegistrationController : ControllerBase
     }
 
     [HttpPut("assign/{eventRegistrationId:int}")]
-    [Authorize(Roles = Constants.CanEvents)]
+    [Authorize(Roles = Constants.EventsStaff)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     [ProducesResponseType(typeof(Response<EventRegistration>), 200)]
@@ -324,7 +324,7 @@ public class EventRegistrationController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.EventsStaffList))
             {
                 return StatusCode(401);
             }
@@ -455,7 +455,7 @@ public class EventRegistrationController : ControllerBase
     }
 
     [HttpDelete("{eventRegistrationId:int}")]
-    [Authorize(Roles = Constants.CanEvents)]
+    [Authorize(Roles = Constants.EventsStaff)]
     [ProducesResponseType(401)]
     [ProducesResponseType(typeof(Response<string?>), 200)]
     [ProducesResponseType(typeof(Response<string?>), 404)]
@@ -464,7 +464,7 @@ public class EventRegistrationController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanEventsList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.EventsStaffList))
             {
                 return StatusCode(401);
             }

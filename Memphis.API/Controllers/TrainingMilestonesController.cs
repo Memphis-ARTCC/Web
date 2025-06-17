@@ -37,7 +37,7 @@ public class TrainingMilestonesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = Constants.CanTrainingMilestones)]
+    [Authorize(Roles = Constants.SeniorTrainingStaff)]
     [ProducesResponseType(typeof(Response<TrainingMilestone>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
@@ -47,7 +47,7 @@ public class TrainingMilestonesController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanTrainingMilestonesList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorTrainingStaffList))
             {
                 return StatusCode(401);
             }
@@ -149,7 +149,7 @@ public class TrainingMilestonesController : ControllerBase
     }
 
     [HttpPut]
-    [Authorize(Roles = Constants.CanTrainingMilestones)]
+    [Authorize(Roles = Constants.SeniorTrainingStaff)]
     [ProducesResponseType(typeof(Response<TrainingMilestone>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -159,7 +159,7 @@ public class TrainingMilestonesController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanTrainingMilestonesList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorTrainingStaffList))
             {
                 return StatusCode(401);
             }

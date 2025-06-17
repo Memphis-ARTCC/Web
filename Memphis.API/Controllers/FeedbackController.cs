@@ -100,7 +100,7 @@ public class FeedbackController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = Constants.CanFeedback)]
+    [Authorize(Roles = Constants.SeniorTrainingStaff)]
     [ProducesResponseType(typeof(Response<Feedback>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -111,7 +111,7 @@ public class FeedbackController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorTrainingStaffList))
             {
                 return StatusCode(401);
             }
@@ -134,7 +134,7 @@ public class FeedbackController : ControllerBase
     }
 
     [HttpGet("{feedbackId:int}")]
-    [Authorize(Roles = Constants.CanFeedback)]
+    [Authorize(Roles = Constants.SeniorTrainingStaff)]
     [ProducesResponseType(typeof(Response<Feedback>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -144,7 +144,7 @@ public class FeedbackController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorTrainingStaffList))
             {
                 return StatusCode(401);
             }
@@ -217,7 +217,7 @@ public class FeedbackController : ControllerBase
     }
 
     [HttpPut("{feedbackId:int}")]
-    [Authorize(Roles = Constants.CanFeedback)]
+    [Authorize(Roles = Constants.SeniorTrainingStaff)]
     [ProducesResponseType(typeof(Response<Feedback>), 200)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
@@ -228,7 +228,7 @@ public class FeedbackController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorTrainingStaffList))
             {
                 return StatusCode(401);
             }
@@ -281,7 +281,7 @@ public class FeedbackController : ControllerBase
     }
 
     [HttpDelete("{feedbackId:int}")]
-    [Authorize(Roles = Constants.CanFeedback)]
+    [Authorize(Roles = Constants.SeniorTrainingStaff)]
     [ProducesResponseType(typeof(Response<string?>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -291,7 +291,7 @@ public class FeedbackController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanFeedbackList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.SeniorTrainingStaffList))
             {
                 return StatusCode(401);
             }

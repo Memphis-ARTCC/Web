@@ -13,6 +13,7 @@ public class StaffingRequest
     public StaffingRequestStatus Status { get; set; } = StaffingRequestStatus.PENDING;
     public DateTimeOffset Start { get; set; }
     public TimeSpan Duration { get; set; }
+    public DateTimeOffset Timetstamp { get; set; } = DateTimeOffset.UtcNow;
 }
 
 public class StaffingRequestPayload

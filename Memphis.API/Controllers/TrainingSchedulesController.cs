@@ -38,7 +38,7 @@ public class TrainingSchedulesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = Constants.CanTrainingSchedule)]
+    [Authorize(Roles = Constants.CanRequestTraining)]
     [ProducesResponseType(typeof(Response<TrainingSchedule>), 201)]
     [ProducesResponseType(typeof(Response<IList<ValidationFailure>>), 400)]
     [ProducesResponseType(401)]
@@ -48,7 +48,7 @@ public class TrainingSchedulesController : ControllerBase
     {
         try
         {
-            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanTrainingMilestonesList))
+            if (!await _redisService.ValidateRoles(Request.HttpContext.User, Constants.CanRequestTrainingList))
             {
                 return StatusCode(401);
             }

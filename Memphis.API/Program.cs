@@ -104,6 +104,7 @@ builder.Services.AddScoped<IValidator<CommentPayload>, CommentValidator>();
 builder.Services.AddScoped<IValidator<EventPositionPayload>, EventPositionValidator>();
 builder.Services.AddScoped<IValidator<EventRegistrationPayload>, EventRegistrationValidator>();
 builder.Services.AddScoped<IValidator<EventPayload>, EventValidator>();
+builder.Services.AddScoped<IValidator<ExamRequestPayload>, ExamRequestValidator>();
 builder.Services.AddScoped<IValidator<FacilityPayload>, FacilityValidator>();
 builder.Services.AddScoped<IValidator<FeedbackPayload>, FeedbackValidator>();
 builder.Services.AddScoped<IValidator<FilePayload>, FileValidator>();
