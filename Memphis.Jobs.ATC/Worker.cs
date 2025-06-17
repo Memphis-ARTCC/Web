@@ -179,7 +179,7 @@ namespace Memphis.Jobs.ATC
                         }
                         await _context.SaveChangesAsync();
                         removed++;
-                        await _onlineWebhook.SendMessageAsync($":x: **{entry.Callsign}** is now offline, **{entry.Name}** controlled for **{Math.Round(entry.Duration.TotalHours, 2)}** hours", false);
+                        await _onlineWebhook.SendMessageAsync($":x: **{entry.Callsign}** is now offline, **{entry.User.FirstName} {entry.User.LastName}** controlled for **{Math.Round(entry.Duration.TotalHours, 2)}** hours", false);
                     }
                 }
 
