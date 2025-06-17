@@ -106,7 +106,7 @@ public class UsersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError("GetRoster error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
+            _logger.LogError("AddComment error '{Message}'\n{StackTrace}", ex.Message, ex.StackTrace);
             return _sentryHub.CaptureException(ex).ReturnActionResult();
         }
     }
