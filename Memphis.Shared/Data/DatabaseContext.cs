@@ -36,7 +36,6 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
     public required DbSet<VisitingApplication> VisitingApplications { get; set; }
     public required DbSet<WebsiteLog> WebsiteLogs { get; set; }
 
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Seed roles
